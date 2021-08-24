@@ -9,7 +9,7 @@ WORKERS: 4
 PRINT_FREQ: 10
 
 DATASET:
-  DATASET: cityscapes
+  DATASET: customdataset
   ROOT: data/
   TEST_SET: 'list/customdataset/val.lst'
   TRAIN_SET: 'list/customdataset/train.lst'

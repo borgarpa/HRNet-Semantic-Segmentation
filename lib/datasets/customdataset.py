@@ -31,7 +31,7 @@ class CustomDataset(BaseDataset):
                  mean=[0.485, 0.456, 0.406, 0,
                       0, 0, 0, 0,
                       0, 0, 0, 0],
-                 std=[0.229, 0.224, 0.225 0,
+                 std=[0.229, 0.224, 0.225, 0,
                       0, 0, 0, 0,
                       0, 0, 0, 0]): ### TODO: Modify channels "mean" and "std" ---> Calculate them based on cloud mask dataset 
 
@@ -87,6 +87,7 @@ class CustomDataset(BaseDataset):
                 label[temp == k] = v
         return label
 
+    ### TODO: Change data loader to use "rasterio.read()"
     def __getitem__(self, index):
         item = self.files[index]
         name = item["name"]
