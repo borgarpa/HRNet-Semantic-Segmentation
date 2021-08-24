@@ -423,10 +423,10 @@ class HighResolutionNet(nn.Module):
         ALIGN_CORNERS = config.MODEL.ALIGN_CORNERS
 
         # stem net
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1,
+        self.conv1 = nn.Conv2d(12, 128, kernel_size=3, stride=2, padding=1, ### NOTE: in_channels has been changed to 12 (Sentinel-2 dims)
                                bias=False)
-        self.bn1 = BatchNorm2d(64, momentum=BN_MOMENTUM)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1,
+        self.bn1 = BatchNorm2d(128, momentum=BN_MOMENTUM)
+        self.conv2 = nn.Conv2d(128, 64, kernel_size=3, stride=2, padding=1,
                                bias=False)
         self.bn2 = BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=relu_inplace)
@@ -667,6 +667,11 @@ class HighResolutionNet(nn.Module):
             print(set(pretrained_dict) - set(model_dict))            
             pretrained_dict = {k: v for k, v in pretrained_dict.items()
                                if k in model_dict.keys()}
+            ### TEST FIRST IF DEFAULT WORKS
+            # pretrained_dict = {k: v for i, (k, v) in enumerate(pretrained_dict.items())
+            #                    if (k in model_dict.keys() and i != 0)}
+            ###
+            
             # for k, _ in pretrained_dict.items():
                 # logger.info(
                 #     '=> loading {} pretrained model {}'.format(k, pretrained))
