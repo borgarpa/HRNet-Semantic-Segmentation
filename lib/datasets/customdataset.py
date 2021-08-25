@@ -7,6 +7,7 @@
 import os
 
 import cv2
+import rasterio as rio
 import numpy as np
 from PIL import Image
 
@@ -51,8 +52,12 @@ class CustomDataset(BaseDataset):
         if num_samples:
             self.files = self.files[:num_samples]
 
-        self.label_mapping = {-1: ignore_label, 0: 0, 
-                              1: 1, 2: 2}
+        self.label_mapping = {
+            -1: ignore_label,
+            0: 0,
+            1: 1,
+            2: 2
+            }
         self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866]).cuda() ### TODO: Modify class weights
     
     def read_files(self):
@@ -91,10 +96,12 @@ class CustomDataset(BaseDataset):
     def __getitem__(self, index):
         item = self.files[index]
         name = item["name"]
+
         # image = cv2.imread(os.path.join(self.root,'cityscapes',item["img"]),
         #                    cv2.IMREAD_COLOR)
-        image = cv2.imread(os.path.join(self.root, item["img"]),
-                           cv2.IMREAD_COLOR)
+        image = rio.open(os.path.join(self.root, item["img"])).read()
+        # Normalize raster to match "uint8" data type
+        image = np.divide(image.max(), 255).astype(np.uint8)
         size = image.shape
 
         if 'test' in self.list_path:
