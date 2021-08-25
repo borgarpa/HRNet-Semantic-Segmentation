@@ -664,12 +664,28 @@ class HighResolutionNet(nn.Module):
             model_dict = self.state_dict()
             pretrained_dict = {k.replace('last_layer', 'aux_head').replace('model.', ''): v for k, v in pretrained_dict.items()}  
             print(set(model_dict) - set(pretrained_dict))            
-            print(set(pretrained_dict) - set(model_dict))            
-            pretrained_dict = {k: v for k, v in pretrained_dict.items()
-                               if k in model_dict.keys()}
-            ### TEST FIRST IF DEFAULT WORKS
-            # pretrained_dict = {k: v for i, (k, v) in enumerate(pretrained_dict.items())
-            #                    if (k in model_dict.keys() and i != 0)}
+            print(set(pretrained_dict) - set(model_dict))       
+
+            # pretrained_dict = {k: v for k, v in pretrained_dict.items()
+            #                    if (k in model_dict.keys())}
+
+            ### SOLVE WEIGHT MISSMATCH: Set Glorot initialization for missmatching layers and load remaining weigths
+
+            # RuntimeError: Error(s) in loading state_dict for HighResolutionNet:
+            #     size mismatch for conv1.weight: copying a param with shape torch.Size([64, 3, 3, 3]) from checkpoint, the shape in current model is torch.Size([128, 12, 3, 3]).
+            #     size mismatch for bn1.weight: copying a param with shape torch.Size([64]) from checkpoint, the shape in current model is torch.Size([128]).
+            #     size mismatch for bn1.bias: copying a param with shape torch.Size([64]) from checkpoint, the shape in current model is torch.Size([128]).
+            #     size mismatch for bn1.running_mean: copying a param with shape torch.Size([64]) from checkpoint, the shape in current model is torch.Size([128]).
+            #     size mismatch for bn1.running_var: copying a param with shape torch.Size([64]) from checkpoint, the shape in current model is torch.Size([128]).
+            #     size mismatch for conv2.weight: copying a param with shape torch.Size([64, 64, 3, 3]) from checkpoint, the shape in current model is torch.Size([64, 128, 3, 3]).
+            #     size mismatch for cls_head.weight: copying a param with shape torch.Size([19, 512, 1, 1]) from checkpoint, the shape in current model is torch.Size([3, 512, 1, 1]).
+            #     size mismatch for cls_head.bias: copying a param with shape torch.Size([19]) from checkpoint, the shape in current model is torch.Size([3]).
+            #     size mismatch for aux_head.3.weight: copying a param with shape torch.Size([19, 720, 1, 1]) from checkpoint, the shape in current model is torch.Size([3, 720, 1, 1]).
+            #     size mismatch for aux_head.3.bias: copying a param with shape torch.Size([19]) from checkpoint, the shape in current model is torch.Size([3]).
+            
+            pretrained_dict = {k: v for i, (k, v) in enumerate(pretrained_dict.items())
+                               if (k in model_dict.keys() and i != 0)} ### NOTE: FILTER LAYERS BY NAME (ABOVE)
+
             ###
             
             # for k, _ in pretrained_dict.items():
