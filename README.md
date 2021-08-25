@@ -117,9 +117,13 @@ If multi-scale testing is used, we adopt scales: 0.5,0.75,1.0,1.25,1.5,1.75,2.0 
 
 ## Quick start
 ### Install
-1. For LIP dataset, install PyTorch=0.4.1 following the [official instructions](https://pytorch.org/). For Cityscapes and PASCAL-Context, we use PyTorch=1.1.0.
+1. For LIP dataset, install PyTorch=0.4.1 following the [official instructions](https://pytorch.org/). For Cityscapes and PASCAL-Context, we use PyTorch=1.1.0. PyTorch 1.7.1 seems to be implemented in the HRNet-OCR version: 
+   `conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11.0 -c pytorch`
 2. `git clone https://github.com/HRNet/HRNet-Semantic-Segmentation $SEG_ROOT`
-3. Install dependencies: pip install -r requirements.txt
+3. Install dependencies: ````bash
+conda install opencv rasterio -c conda-forge
+pip install -r requirements.txt
+````
 
 If you want to train and evaluate our models on PASCAL-Context, you need to install [details](https://github.com/zhanghang1989/detail-api).
 ````bash

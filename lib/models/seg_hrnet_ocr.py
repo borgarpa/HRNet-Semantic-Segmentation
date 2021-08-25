@@ -667,12 +667,12 @@ class HighResolutionNet(nn.Module):
             print(set(pretrained_dict) - set(model_dict))            
             pretrained_dict = {k: v for k, v in pretrained_dict.items()
                                if k in model_dict.keys()}
-            ### TEST FIRST IF DEFAULT WORKS
+            ### NOTE: TEST FIRST IF DEFAULT WORKS
             # pretrained_dict = {k: v for i, (k, v) in enumerate(pretrained_dict.items())
             #                    if (k in model_dict.keys() and i != 0)}
             ###
             
-            # for k, _ in pretrained_dict.items():
+            # for k, _ in pretrained_dict.items(): 
                 # logger.info(
                 #     '=> loading {} pretrained model {}'.format(k, pretrained))
             model_dict.update(pretrained_dict)

@@ -101,7 +101,7 @@ class CustomDataset(BaseDataset):
         #                    cv2.IMREAD_COLOR)
         image = rio.open(os.path.join(self.root, item["img"])).read()
         # Normalize raster to match "uint8" data type
-        image = np.divide(image.max(), 255).astype(np.uint8)
+        image = (image.max() / 255).astype(np.uint8)
         size = image.shape
 
         if 'test' in self.list_path:
