@@ -688,7 +688,7 @@ class HighResolutionNet(nn.Module):
 
             ###
             
-            # for k, _ in pretrained_dict.items():
+            # for k, _ in pretrained_dict.items(): 
                 # logger.info(
                 #     '=> loading {} pretrained model {}'.format(k, pretrained))
             model_dict.update(pretrained_dict)
