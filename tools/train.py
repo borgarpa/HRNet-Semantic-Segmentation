@@ -27,6 +27,7 @@ import _init_paths
 import models
 import datasets
 from config import config
+# print(config)
 from config import update_config
 from core.criterion import CrossEntropy, OhemCrossEntropy
 from core.function import train, validate

@@ -99,9 +99,16 @@ class CustomDataset(BaseDataset):
 
         # image = cv2.imread(os.path.join(self.root,'cityscapes',item["img"]),
         #                    cv2.IMREAD_COLOR)
+
+        ### TODO: Check whether files can be loaded as np.float32 variables ---> They would contain more information given digit precision
         image = rio.open(os.path.join(self.root, item["img"])).read()
-        # Normalize raster to match "uint8" data type
-        image = np.divide(image.max(), 255).astype(np.uint8)
+
+        ## Normalize raster to match "uint8" data type
+        # im_min = image.min(axis=(0, 1), keepdims=True)
+        im_max = image.max(axis=(0, 1), keepdims=True)
+        # image = (((image - im_min)/(im_max - im_min))*255).astype(np.uint8) ### NOTE: Images are supposed to be normalized thereafter, hence no need to do it now
+        image = ((image/im_max)*255).astype(np.uint8)
+        # image = np.stack([(im_/im_.max())/255 for im_ in image.transpose((-1, 0, 1))]).astype(np.uint8)
         size = image.shape
 
         if 'test' in self.list_path:

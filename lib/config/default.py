@@ -56,11 +56,11 @@ _C.LOSS.BALANCE_WEIGHTS = [1]
 # DATASET related params
 _C.DATASET = CN()
 _C.DATASET.ROOT = ''
-_C.DATASET.DATASET = 'cityscapes'
-_C.DATASET.NUM_CLASSES = 19
-_C.DATASET.TRAIN_SET = 'list/cityscapes/train.lst'
+_C.DATASET.DATASET = 'customdataset'
+_C.DATASET.NUM_CLASSES = 3
+_C.DATASET.TRAIN_SET = 'list/customdataset/train.lst'
 _C.DATASET.EXTRA_TRAIN_SET = ''
-_C.DATASET.TEST_SET = 'list/cityscapes/val.lst'
+_C.DATASET.TEST_SET = 'list/customdataset/val.lst'
 
 # training
 _C.TRAIN = CN()
@@ -70,8 +70,8 @@ _C.TRAIN.FREEZE_EPOCHS = -1
 _C.TRAIN.NONBACKBONE_KEYWORDS = []
 _C.TRAIN.NONBACKBONE_MULT = 10
 
-_C.TRAIN.IMAGE_SIZE = [1024, 512]  # width * height
-_C.TRAIN.BASE_SIZE = 2048
+_C.TRAIN.IMAGE_SIZE = [512, 512]  # width * height
+_C.TRAIN.BASE_SIZE = 512
 _C.TRAIN.DOWNSAMPLERATE = 1
 _C.TRAIN.FLIP = True
 _C.TRAIN.MULTI_SCALE = True
@@ -105,8 +105,8 @@ _C.TRAIN.NUM_SAMPLES = 0
 # testing
 _C.TEST = CN()
 
-_C.TEST.IMAGE_SIZE = [2048, 1024]  # width * height
-_C.TEST.BASE_SIZE = 2048
+_C.TEST.IMAGE_SIZE = [512, 512]  # width * height
+_C.TEST.BASE_SIZE = 512
 
 _C.TEST.BATCH_SIZE_PER_GPU = 32
 # only testing some samples
