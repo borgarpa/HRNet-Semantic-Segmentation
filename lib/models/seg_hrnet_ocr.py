@@ -666,9 +666,6 @@ class HighResolutionNet(nn.Module):
             print(set(model_dict) - set(pretrained_dict))            
             print(set(pretrained_dict) - set(model_dict))       
 
-            # pretrained_dict = {k: v for k, v in pretrained_dict.items()
-            #                    if (k in model_dict.keys())}
-
             ### SOLVE WEIGHT MISSMATCH: Set Glorot initialization for missmatching layers and load remaining weigths
 
             # RuntimeError: Error(s) in loading state_dict for HighResolutionNet:
@@ -683,8 +680,19 @@ class HighResolutionNet(nn.Module):
             #     size mismatch for aux_head.3.weight: copying a param with shape torch.Size([19, 720, 1, 1]) from checkpoint, the shape in current model is torch.Size([3, 720, 1, 1]).
             #     size mismatch for aux_head.3.bias: copying a param with shape torch.Size([19]) from checkpoint, the shape in current model is torch.Size([3]).
             
+            skip_layers = ['conv1.weight',
+            'bn1.weight',
+            'bn1.bias',
+            'bn1.running_mean',
+            'bn1.running_var',
+            'conv2.weight',
+            'cls_head.weight',
+            'cls_head.bias',
+            'aux_head.3.weight',
+            'aux_head.3.bias']
+
             pretrained_dict = {k: v for i, (k, v) in enumerate(pretrained_dict.items())
-                               if (k in model_dict.keys() and i != 0)} ### NOTE: FILTER LAYERS BY NAME (ABOVE)
+                               if (k in model_dict.keys() and k not in skip_layers)} ### NOTE: FILTER LAYERS BY NAME (ABOVE)
 
             ###
             

@@ -13,7 +13,11 @@ import logging
 import time
 from pathlib import Path
 
+import re
+import cv2
 import numpy as np
+import rasterio as rio
+from rasterio import path
 
 import torch
 import torch.nn as nn
@@ -136,3 +140,44 @@ def adjust_learning_rate(optimizer, base_lr, max_iters,
     if len(optimizer.param_groups) == 2:
         optimizer.param_groups[1]['lr'] = lr * nbb_mult
     return lr
+
+
+def gen_artificial_data(size, nclasses, nsamples, out_path, listpath):
+
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+    if not os.path.exists(os.path.dirname(listpath)):
+        os.makedirs(os.path.dirname(listpath))
+
+    # filelist_ = []
+    with open(listpath, 'w+') as f:
+        for n in range(nsamples):
+                
+            array = np.random.randn(*size).astype(np.float32)*10000
+            mask = np.random.uniform(1, nclasses+1, size[:-1]).astype(np.uint8)
+
+            with rio.open(os.path.join(out_path, f'array_{n}.tif'),
+                'w',
+                driver='GTiff',
+                height=size[0],
+                width=size[1],
+                count=size[-1],
+                dtype=np.float32) as dst:
+                dst.write(array.transpose(-1, 0, 1))
+
+            cv2.imwrite(os.path.join(out_path, f'mask_{n}.png'), mask)
+            write_path = re.findall('\\\\data\\\\(.+)', out_path)[0]
+            f.write(os.path.join(write_path, f'array_{n}.tif') + '\t' + os.path.join(write_path, f'mask_{n}.png'+'\n'))
+        f.close()
+
+def gen_artificial_dataset(size, nclasses, nsamples, dataset_path, listpath):
+
+    for path_ in ['train', 'test', 'val']:
+        gen_artificial_data(size, nclasses, nsamples,
+        os.path.join(dataset_path, path_),
+        os.path.join(listpath, path_+'.lst'))
+
+if __name__ == "__main__":
+    outpath = '.\data\customdataset'
+    listpath = '.\data\list\customdataset'
+    gen_artificial_dataset((512, 512, 12), 3, 15, outpath, listpath)

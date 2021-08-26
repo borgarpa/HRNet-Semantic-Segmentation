@@ -29,12 +29,12 @@ class CustomDataset(BaseDataset):
                  crop_size=(512, 512), 
                  downsample_rate=1,
                  scale_factor=16,
-                 mean=[0.485, 0.456, 0.406, 0,
-                      0, 0, 0, 0,
-                      0, 0, 0, 0],
-                 std=[0.229, 0.224, 0.225, 0,
-                      0, 0, 0, 0,
-                      0, 0, 0, 0]): ### TODO: Modify channels "mean" and "std" ---> Calculate them based on cloud mask dataset 
+                 mean=[0.485, 0.456, 0.406, 0.431,
+                      0.485, 0.456, 0.406, 0.431,
+                      0.485, 0.456, 0.406, 0.431],
+                 std=[0.229, 0.224, 0.225, 0.264,
+                      0.229, 0.224, 0.225, 0.264,
+                      0.229, 0.224, 0.225, 0.264]): ### TODO: Modify channels "mean" and "std" ---> Calculate them based on cloud mask dataset 
 
         super(CustomDataset, self).__init__(ignore_label, base_size,
                 crop_size, downsample_rate, scale_factor, mean, std,)
@@ -54,9 +54,10 @@ class CustomDataset(BaseDataset):
 
         self.label_mapping = {
             -1: ignore_label,
-            0: 0,
-            1: 1,
-            2: 2
+            0: ignore_label,
+            1: 0,
+            2: 1,
+            3: 2
             }
         self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866]).cuda() ### TODO: Modify class weights
     
@@ -101,7 +102,8 @@ class CustomDataset(BaseDataset):
         #                    cv2.IMREAD_COLOR)
 
         ### TODO: Check whether files can be loaded as np.float32 variables ---> They would contain more information given digit precision
-        image = rio.open(os.path.join(self.root, item["img"])).read()
+        image = rio.open(os.path.join(self.root, item["img"])).read().transpose((1, 2, 0))
+        # print('init', image.shape)
 
         ## Normalize raster to match "uint8" data type
         # im_min = image.min(axis=(0, 1), keepdims=True)
@@ -125,7 +127,8 @@ class CustomDataset(BaseDataset):
 
         image, label = self.gen_sample(image, label, 
                                 self.multi_scale, self.flip)
-
+        # print(label.min(), label.max(), label.dtype)
+        # print(label[label > (self.num_classes-1)])
         return image.copy(), label.copy(), np.array(size), name
 
     def multi_scale_inference(self, config, model, image, scales=[1], flip=False):
