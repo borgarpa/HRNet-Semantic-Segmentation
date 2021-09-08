@@ -158,7 +158,6 @@ class BaseDataset(data.Dataset):
             rand_scale = 0.5 + random.randint(0, self.scale_factor) / 10.0
             image, label = self.multi_scale_aug(image, label,
                                                 rand_scale=rand_scale)
-
         image = self.random_brightness(image)
         image = self.input_transform(image)
         label = self.label_transform(label)

@@ -13,7 +13,7 @@ DATASET:
   ROOT: data/
   TEST_SET: 'list/customdataset/val.lst'
   TRAIN_SET: 'list/customdataset/train.lst'
-  NUM_CLASSES: 3
+  NUM_CLASSES: 6
 MODEL:
   NAME: seg_hrnet_ocr
   NUM_OUTPUTS: 2
@@ -78,7 +78,7 @@ TRAIN:
   - 512
   - 512
   BASE_SIZE: 512
-  BATCH_SIZE_PER_GPU: 1 #3
+  BATCH_SIZE_PER_GPU: 2 #3
   SHUFFLE: true
   BEGIN_EPOCH: 0
   END_EPOCH: 484

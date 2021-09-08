@@ -7,9 +7,10 @@
 import os
 
 import cv2
-import rasterio as rio
+# import rasterio as rio
 import numpy as np
 from PIL import Image
+import rasterio
 
 import torch
 from torch.nn import functional as F
@@ -21,7 +22,7 @@ class CustomDataset(BaseDataset):
                  root, 
                  list_path, 
                  num_samples=None, 
-                 num_classes=3,
+                 num_classes=6,
                  multi_scale=True, 
                  flip=True, 
                  ignore_label=-1, 
@@ -29,12 +30,16 @@ class CustomDataset(BaseDataset):
                  crop_size=(512, 512), 
                  downsample_rate=1,
                  scale_factor=16,
-                 mean=[0.485, 0.456, 0.406, 0.431,
-                      0.485, 0.456, 0.406, 0.431,
-                      0.485, 0.456, 0.406, 0.431],
-                 std=[0.229, 0.224, 0.225, 0.264,
-                      0.229, 0.224, 0.225, 0.264,
-                      0.229, 0.224, 0.225, 0.264]): ### TODO: Modify channels "mean" and "std" ---> Calculate them based on cloud mask dataset 
+                 mean=[
+                     0.2637107, 0.25476205, 0.21422257, 0.41460577,
+                     0.3082067, 0.38923767, 0.40770265, 0.42465258,
+                     0.40538526, 0.34404686, 0.25083482, 0.4746736
+                     ],
+                 std=[
+                     0.10770456, 0.09802352, 0.0955564, 0.11425704,
+                     0.10652711, 0.10958492, 0.11316472, 0.11476143,
+                     0.12077899, 0.11867262, 0.09718464, 0.12459367
+                     ]): ### TODO: Modify channels "mean" and "std" ---> Calculate them based on cloud mask dataset 
 
         super(CustomDataset, self).__init__(ignore_label, base_size,
                 crop_size, downsample_rate, scale_factor, mean, std,)
@@ -55,11 +60,17 @@ class CustomDataset(BaseDataset):
         self.label_mapping = {
             -1: ignore_label,
             0: ignore_label,
-            1: 0,
-            2: 1,
-            3: 2
+            1: ignore_label,
+            2: 0,
+            3: 1,
+            4: 2,
+            5: 3,
+            6: 4,
+            7: 5
             }
-        self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866]).cuda() ### TODO: Modify class weights
+        self.class_weights = torch.FloatTensor([
+            0.9509352630470058, 0.9619139153028585, 1.0274535832992266,
+            0.8796275898249121, 1.0377751198382479, 1.1422945286877488]).cuda() ### TODO: Modify class weights
     
     def read_files(self):
         files = []
@@ -98,12 +109,9 @@ class CustomDataset(BaseDataset):
         item = self.files[index]
         name = item["name"]
 
-        # image = cv2.imread(os.path.join(self.root,'cityscapes',item["img"]),
-        #                    cv2.IMREAD_COLOR)
-
         ### TODO: Check whether files can be loaded as np.float32 variables ---> They would contain more information given digit precision
-        image = rio.open(os.path.join(self.root, item["img"])).read().transpose((1, 2, 0))
-        # print('init', image.shape)
+        image = rasterio.open(os.path.join(self.root, item["img"])).read()
+        image = image.transpose((1, 2, 0)) # Data shape must have the following format: HxWxC
 
         ## Normalize raster to match "uint8" data type
         # im_min = image.min(axis=(0, 1), keepdims=True)
@@ -124,7 +132,6 @@ class CustomDataset(BaseDataset):
         label = cv2.imread(os.path.join(self.root, item["label"]),
                            cv2.IMREAD_GRAYSCALE)
         label = self.convert_label(label)
-
         image, label = self.gen_sample(image, label, 
                                 self.multi_scale, self.flip)
         # print(label.min(), label.max(), label.dtype)

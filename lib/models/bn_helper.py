@@ -7,6 +7,6 @@ if torch.__version__.startswith('0'):
     BatchNorm2d_class = InPlaceABNSync
     relu_inplace = False
 else:
-    # BatchNorm2d_class = BatchNorm2d = torch.nn.SyncBatchNorm
-    BatchNorm2d_class = BatchNorm2d = torch.nn.BatchNorm2d
+    # BatchNorm2d_class = BatchNorm2d = torch.nn.SyncBatchNorm 
+    BatchNorm2d_class = BatchNorm2d = torch.nn.BatchNorm2d ### NOTE: Keep active only if using on Windows
     relu_inplace = True
