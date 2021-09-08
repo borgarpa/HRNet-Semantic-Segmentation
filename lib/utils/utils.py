@@ -252,7 +252,10 @@ def compute_train_stats(train, ignore=[0, 1], class_map=[2,3,4,5,6,7], return_st
     for sample in tqdm(train, desc='Computing stats'):
 
         if 'mean' or 'std' in return_stats:
-            x = rasterio.open(sample[0]).read().transpose((1, 2, 0))
+            if sample[0].endswith('.tif'):
+                x = rasterio.open(sample[0]).read().transpose((1, 2, 0))
+            else:
+                x = np.load(sample[0])
             means.append(mean_(x))
             stds.append(std_(x))
 

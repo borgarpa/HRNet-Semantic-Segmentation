@@ -104,20 +104,17 @@ class CustomDataset(BaseDataset):
                 label[temp == k] = v
         return label
 
-    ### TODO: Change data loader to use "rasterio.read()"
     def __getitem__(self, index):
         item = self.files[index]
         name = item["name"]
 
-        ### TODO: Check whether files can be loaded as np.float32 variables ---> They would contain more information given digit precision
-        image = rasterio.open(os.path.join(self.root, item["img"])).read()
-        image = image.transpose((1, 2, 0)) # Data shape must have the following format: HxWxC
+        ### NOTE: Data shape must have the following format: HxWxC
+        # image = rasterio.open(os.path.join(self.root, item["img"])).read()
+        # image = image.transpose((1, 2, 0)) 
+        image = np.load(os.path.join(self.root, item["img"]))
 
         ## Normalize raster to match "uint8" data type
-        # im_min = image.min(axis=(0, 1), keepdims=True)
-        im_max = image.max(axis=(0, 1), keepdims=True)
-        # image = (((image - im_min)/(im_max - im_min))*255).astype(np.uint8) ### NOTE: Images are supposed to be normalized thereafter, hence no need to do it now
-        image = ((image/im_max)*255).astype(np.uint8)
+        image = ((image/image.max(axis=(0, 1), keepdims=True))*255).astype(np.uint8)
         # image = np.stack([(im_/im_.max())/255 for im_ in image.transpose((-1, 0, 1))]).astype(np.uint8)
         size = image.shape
 
@@ -127,15 +124,12 @@ class CustomDataset(BaseDataset):
 
             return image.copy(), np.array(size), name
 
-        # label = cv2.imread(os.path.join(self.root,'cityscapes',item["label"]),
-        #                    cv2.IMREAD_GRAYSCALE)
         label = cv2.imread(os.path.join(self.root, item["label"]),
                            cv2.IMREAD_GRAYSCALE)
         label = self.convert_label(label)
         image, label = self.gen_sample(image, label, 
                                 self.multi_scale, self.flip)
-        # print(label.min(), label.max(), label.dtype)
-        # print(label[label > (self.num_classes-1)])
+
         return image.copy(), label.copy(), np.array(size), name
 
     def multi_scale_inference(self, config, model, image, scales=[1], flip=False):

@@ -11,7 +11,7 @@ PRINT_FREQ: 10
 DATASET:
   DATASET: customdataset
   ROOT: data/
-  TEST_SET: 'list/customdataset/val.lst'
+  TEST_SET: 'list/customdataset/test.lst'
   TRAIN_SET: 'list/customdataset/train.lst'
   NUM_CLASSES: 6
 MODEL:
