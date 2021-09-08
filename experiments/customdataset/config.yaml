@@ -11,7 +11,9 @@ PRINT_FREQ: 10
 DATASET:
   DATASET: customdataset
   ROOT: data/
-  TEST_SET: 'list/customdataset/test.lst'
+  # TEST_SET: 'list/customdataset/val_debug.lst'
+  # TRAIN_SET: 'list/customdataset/train_debug.lst'
+  TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
   TRAIN_SET: 'list/customdataset/train.lst'
   NUM_CLASSES: 6
 MODEL:
