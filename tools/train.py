@@ -42,6 +42,7 @@ def parse_args():
                         required=True,
                         type=str)
     parser.add_argument('--seed', type=int, default=304)
+    parser.add_argument('--skip_stem', type=int, default=0, required=False)
     parser.add_argument("--local_rank", type=int, default=-1)       
     parser.add_argument('opts',
                         help="Modify config options using the command-line",
@@ -100,7 +101,7 @@ def main():
                  '.get_seg_model')(config)
 
     # dump_input = torch.rand(
-    #     (1, 3, config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
+    #     (1, 12, config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
     # )
     # logger.info(get_model_summary(model.cuda(), dump_input.cuda()))
 
@@ -255,8 +256,29 @@ def main():
             best_mIoU = checkpoint['best_mIoU']
             last_epoch = checkpoint['epoch']
             dct = checkpoint['state_dict']
-            
-            model.module.model.load_state_dict({k.replace('model.', ''): v for k, v in checkpoint['state_dict'].items() if k.startswith('model.')})
+            skip_layers = []
+            if bool(args.skip_stem):
+                skip_layers += [
+                    # 'convstem.weight',
+                    # 'bnstem.weight',
+                    # 'bnstem.bias',
+                    # 'bnstem.running_mean',
+                    # 'bnstem.running_var',
+                    # 'conv1.weight',
+                    # 'bn1.weight',
+                    # 'bn1.bias',
+                    # 'bn1.running_mean',
+                    # 'bn1.running_var',
+                    'conv2.weight',
+                    # 'cls_head.weight',
+                    # 'cls_head.bias',
+                    # 'aux_head.3.weight',
+                    # 'aux_head.3.bias'
+                    ]
+            print([k.replace('model.', '') for k in checkpoint['state_dict'].keys() if (k.startswith('model.') and k.replace('model.', '') not in skip_layers)])
+            print(bool(args.skip_stem))
+            print(skip_layers)
+            model.module.model.load_state_dict({k.replace('model.', ''): v for k, v in checkpoint['state_dict'].items() if (k.startswith('model.') and k.replace('model.', '') not in skip_layers)})
             optimizer.load_state_dict(checkpoint['optimizer'])
             logger.info("=> loaded checkpoint (epoch {})"
                         .format(checkpoint['epoch']))

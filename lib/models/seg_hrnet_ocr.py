@@ -422,13 +422,20 @@ class HighResolutionNet(nn.Module):
         super(HighResolutionNet, self).__init__()
         ALIGN_CORNERS = config.MODEL.ALIGN_CORNERS
 
-        # stem net
-        self.conv1 = nn.Conv2d(12, 128, kernel_size=3, stride=2, padding=1, ### NOTE: in_channels has been changed to 12 (Sentinel-2 dims)
+        ### STEM NET
+        # 512
+        self.convstem = nn.Conv2d(12, 256, kernel_size=3, stride=2, padding=1, ### NOTE: in_channels has been changed to 12 (Sentinel-2 dims)
+                               bias=False)
+        self.bnstem = BatchNorm2d(256, momentum=BN_MOMENTUM)
+        # 256
+        self.conv1 = nn.Conv2d(256, 128, kernel_size=3, stride=2, padding=1,
                                bias=False)
         self.bn1 = BatchNorm2d(128, momentum=BN_MOMENTUM)
-        self.conv2 = nn.Conv2d(128, 64, kernel_size=3, stride=2, padding=1,
+        # 128
+        self.conv2 = nn.Conv2d(128, 64, kernel_size=1, stride=1, # kernel_size=4, stride=2
                                bias=False)
         self.bn2 = BatchNorm2d(64, momentum=BN_MOMENTUM)
+        # 128
         self.relu = nn.ReLU(inplace=relu_inplace)
 
         self.stage1_cfg = extra['STAGE1']
@@ -581,6 +588,9 @@ class HighResolutionNet(nn.Module):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x):
+        x = self.convstem(x)
+        x = self.bnstem(x)
+        x = self.relu(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -680,17 +690,26 @@ class HighResolutionNet(nn.Module):
             #     size mismatch for aux_head.3.weight: copying a param with shape torch.Size([19, 720, 1, 1]) from checkpoint, the shape in current model is torch.Size([3, 720, 1, 1]).
             #     size mismatch for aux_head.3.bias: copying a param with shape torch.Size([19]) from checkpoint, the shape in current model is torch.Size([3]).
             
-            skip_layers = ['conv1.weight',
-            'bn1.weight',
-            'bn1.bias',
-            'bn1.running_mean',
-            'bn1.running_var',
-            'conv2.weight',
-            'cls_head.weight',
-            'cls_head.bias',
-            'aux_head.3.weight',
-            'aux_head.3.bias']
+            skip_layers = [
+                # 'convstem.weight',
+                # 'bnstem.weight',
+                # 'bnstem.bias',
+                # 'bnstem.running_mean',
+                # 'bnstem.running_var',
+                # 'conv1.weight',
+                # 'bn1.weight',
+                # 'bn1.bias',
+                # 'bn1.running_mean',
+                # 'bn1.running_var',
+                'conv2.weight',
+                # 'cls_head.weight',
+                # 'cls_head.bias',
+                # 'aux_head.3.weight',
+                # 'aux_head.3.bias'
+                ]
 
+            # print([k for k in pretrained_dict.keys()
+            #                    if (k in model_dict.keys() and k not in skip_layers)])
             pretrained_dict = {k: v for i, (k, v) in enumerate(pretrained_dict.items())
                                if (k in model_dict.keys() and k not in skip_layers)} ### NOTE: FILTER LAYERS BY NAME (ABOVE)
 

@@ -114,7 +114,7 @@ class CustomDataset(BaseDataset):
         image = np.load(os.path.join(self.root, item["img"]))
 
         ## Normalize raster to match "uint8" data type
-        image = ((image/image.max(axis=(0, 1), keepdims=True))*255).astype(np.uint8)
+        image = ((np.clip(image, 0, 65535)/65535)*255).astype(np.uint8) #Vaor saturado máximo
         # image = np.stack([(im_/im_.max())/255 for im_ in image.transpose((-1, 0, 1))]).astype(np.uint8)
         size = image.shape
 

@@ -19,7 +19,8 @@ DATASET:
 MODEL:
   NAME: seg_hrnet_ocr
   NUM_OUTPUTS: 2
-  PRETRAINED: "pretrained_models/hrnet_ocr_cs_trainval_8227_torch11.pth"
+  # PRETRAINED: "pretrained_models/hrnet_ocr_cs_trainval_8227_torch11.pth"
+  # PRETRAINED: "output/customdataset/config/best.pth"
   EXTRA:
     FINAL_CONV_KERNEL: 1
     STAGE1:
@@ -84,7 +85,7 @@ TRAIN:
   SHUFFLE: true
   BEGIN_EPOCH: 0
   END_EPOCH: 484
-  RESUME: true
+  RESUME: false #true
   OPTIMIZER: sgd
   LR: 0.01
   WD: 0.0005
