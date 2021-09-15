@@ -166,17 +166,17 @@ def gen_artificial_data(size, nclasses, nsamples, out_path, listpath):
             array = np.random.randn(*size).astype(np.float32)*65535
             mask = np.random.uniform(1, nclasses+1, size[:-1]).astype(np.uint8)
 
-            np.save(os.path.join(out_path, f'array_{n}.npy'), array)
+            # np.save(os.path.join(out_path, f'array_{n}.npy'), array)
             cv2.imwrite(os.path.join(out_path, f'mask_{n}.png'), mask)
 
-            # with rio.open(os.path.join(out_path, f'array_{n}.tif'),
-            #     'w',
-            #     driver='GTiff',
-            #     height=size[0],
-            #     width=size[1],
-            #     count=size[-1],
-            #     dtype=np.float32) as dst:
-            #     dst.write(array.transpose(-1, 0, 1))
+            with rio.open(os.path.join(out_path, f'array_{n}.tif'),
+                'w',
+                driver='GTiff',
+                height=size[0],
+                width=size[1],
+                count=size[-1],
+                dtype=np.float32) as dst:
+                dst.write(array.transpose(-1, 0, 1))
 
             write_path = re.findall('\\\\data\\\\(.+)', out_path)[0]
             f.write(os.path.join(write_path, f'array_{n}.tif') + '\t' + os.path.join(write_path, f'mask_{n}.png'+'\n'))
