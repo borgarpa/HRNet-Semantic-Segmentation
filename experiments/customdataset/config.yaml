@@ -40,8 +40,8 @@ MODEL:
       - 4
       - 4
       NUM_CHANNELS:
-      - 96 # 48
-      - 192 # 96
+      - 48
+      - 96
       FUSE_METHOD: SUM
     STAGE3:
       NUM_MODULES: 4
@@ -52,9 +52,9 @@ MODEL:
       - 4
       - 4
       NUM_CHANNELS:
-      - 96 # 48
-      - 192 # 96
-      - 384 # 192
+      - 48
+      - 96
+      - 192
       FUSE_METHOD: SUM
     STAGE4:
       NUM_MODULES: 3
@@ -66,10 +66,10 @@ MODEL:
       - 4
       - 4
       NUM_CHANNELS:
-      - 96 # 48
-      - 192 # 96
-      - 384 # 192
-      - 568 # 384
+      - 48
+      - 96
+      - 192
+      - 384
       FUSE_METHOD: SUM
 LOSS:
   USE_OHEM: false
