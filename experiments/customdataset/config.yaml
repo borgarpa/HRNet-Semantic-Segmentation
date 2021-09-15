@@ -11,10 +11,10 @@ PRINT_FREQ: 10
 DATASET:
   DATASET: customdataset
   ROOT: data/
-  TEST_SET: 'list/customdataset/val_debug.lst'
-  TRAIN_SET: 'list/customdataset/train_debug.lst'
-  # TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
-  # TRAIN_SET: 'list/customdataset/train.lst'
+  # TEST_SET: 'list/customdataset/val_debug.lst'
+  # TRAIN_SET: 'list/customdataset/train_debug.lst'
+  TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
+  TRAIN_SET: 'list/customdataset/train.lst'
   NUM_CLASSES: 6
 MODEL:
   NAME: seg_hrnet_ocr
@@ -30,7 +30,7 @@ MODEL:
       NUM_BLOCKS:
       - 4
       NUM_CHANNELS:
-      - 64
+      - 128
       FUSE_METHOD: SUM
     STAGE2:
       NUM_MODULES: 1
