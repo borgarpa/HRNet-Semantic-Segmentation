@@ -11,16 +11,16 @@ PRINT_FREQ: 10
 DATASET:
   DATASET: customdataset
   ROOT: data/
-  # TEST_SET: 'list/customdataset/val_debug.lst'
-  # TRAIN_SET: 'list/customdataset/train_debug.lst'
-  TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
-  TRAIN_SET: 'list/customdataset/train.lst'
+  TEST_SET: 'list/customdataset/val_debug.lst'
+  TRAIN_SET: 'list/customdataset/train_debug.lst'
+  # TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
+  # TRAIN_SET: 'list/customdataset/train.lst'
   NUM_CLASSES: 6
 MODEL:
   NAME: seg_hrnet_ocr
   NUM_OUTPUTS: 2
   # PRETRAINED: "pretrained_models/hrnet_ocr_cs_trainval_8227_torch11.pth"
-  # PRETRAINED: "output/customdataset/config/best.pth"
+  PRETRAINED: "output/customdataset/config/best.pth"
   EXTRA:
     FINAL_CONV_KERNEL: 1
     STAGE1:
@@ -85,7 +85,7 @@ TRAIN:
   SHUFFLE: true
   BEGIN_EPOCH: 0
   END_EPOCH: 484
-  RESUME: false #true
+  RESUME: true #true
   OPTIMIZER: sgd
   LR: 0.01
   WD: 0.0005

@@ -701,7 +701,7 @@ class HighResolutionNet(nn.Module):
                 # 'bn1.bias',
                 # 'bn1.running_mean',
                 # 'bn1.running_var',
-                'conv2.weight',
+                # 'conv2.weight',
                 # 'cls_head.weight',
                 # 'cls_head.bias',
                 # 'aux_head.3.weight',

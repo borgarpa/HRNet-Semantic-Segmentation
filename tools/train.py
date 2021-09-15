@@ -20,6 +20,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.optim
 from tensorboardX import SummaryWriter
 
@@ -93,7 +94,7 @@ def main():
         device = torch.device('cuda:{}'.format(args.local_rank))    
         torch.cuda.set_device(device)
         torch.distributed.init_process_group(
-            backend="nccl", init_method="env://", accelerator='dp',
+            backend="nccl", init_method="env://", accelerator='dp', ### NOTE: Cuda accelerator; MIGTH NOT BE THE SAME FOR LINUX OS
         )        
 
     # build model
@@ -240,6 +241,9 @@ def main():
                                 weight_decay=config.TRAIN.WD,
                                 nesterov=config.TRAIN.NESTEROV,
                                 )
+        schedulers = [
+            ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3)
+                    ]
     else:
         raise ValueError('Only Support SGD optimizer')
 
@@ -269,15 +273,15 @@ def main():
                     # 'bn1.bias',
                     # 'bn1.running_mean',
                     # 'bn1.running_var',
-                    'conv2.weight',
+                    # 'conv2.weight',
                     # 'cls_head.weight',
                     # 'cls_head.bias',
                     # 'aux_head.3.weight',
                     # 'aux_head.3.bias'
                     ]
-            print([k.replace('model.', '') for k in checkpoint['state_dict'].keys() if (k.startswith('model.') and k.replace('model.', '') not in skip_layers)])
-            print(bool(args.skip_stem))
-            print(skip_layers)
+            # print([k.replace('model.', '') for k in checkpoint['state_dict'].keys() if (k.startswith('model.') and k.replace('model.', '') not in skip_layers)])
+            # print(bool(args.skip_stem))
+            # print(skip_layers)
             model.module.model.load_state_dict({k.replace('model.', ''): v for k, v in checkpoint['state_dict'].items() if (k.startswith('model.') and k.replace('model.', '') not in skip_layers)})
             optimizer.load_state_dict(checkpoint['optimizer'])
             logger.info("=> loaded checkpoint (epoch {})"
@@ -303,11 +307,11 @@ def main():
             train(config, epoch-config.TRAIN.END_EPOCH, 
                   config.TRAIN.EXTRA_EPOCH, extra_epoch_iters, 
                   config.TRAIN.EXTRA_LR, extra_iters, 
-                  extra_trainloader, optimizer, model, writer_dict)
+                  extra_trainloader, optimizer, schedulers, model, writer_dict)
         else:
             train(config, epoch, config.TRAIN.END_EPOCH, 
                   epoch_iters, config.TRAIN.LR, num_iters,
-                  trainloader, optimizer, model, writer_dict)
+                  trainloader, optimizer, schedulers, model, writer_dict)
 
         valid_loss, mean_IoU, IoU_array = validate(config, 
                     testloader, model, writer_dict)

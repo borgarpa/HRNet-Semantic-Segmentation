@@ -27,6 +27,7 @@ from rasterio import path
 
 import torch
 import torch.nn as nn
+from torch.optim.lr_scheduler import ExponentialLR
 
 class FullModel(nn.Module):
   """
@@ -141,6 +142,9 @@ def get_confusion_matrix(label, pred, size, num_class, ignore=-1):
 
 def adjust_learning_rate(optimizer, base_lr, max_iters, 
         cur_iters, power=0.9, nbb_mult=10):
+    # scheduler = ExponentialLR(optimizer, gamma=(1-float(cur_iters)/max_iters)**(power))
+    # scheduler.step()
+    # lr = scheduler.get_last_lr()
     lr = base_lr*((1-float(cur_iters)/max_iters)**(power))
     optimizer.param_groups[0]['lr'] = lr
     if len(optimizer.param_groups) == 2:
@@ -159,7 +163,7 @@ def gen_artificial_data(size, nclasses, nsamples, out_path, listpath):
     with open(listpath, 'w+') as f:
         for n in range(nsamples):
                 
-            array = np.random.randn(*size).astype(np.float32)*10000
+            array = np.random.randn(*size).astype(np.float32)*65535
             mask = np.random.uniform(1, nclasses+1, size[:-1]).astype(np.uint8)
 
             np.save(os.path.join(out_path, f'array_{n}.npy'), array)

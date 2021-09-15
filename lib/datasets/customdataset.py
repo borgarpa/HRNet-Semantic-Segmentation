@@ -109,12 +109,12 @@ class CustomDataset(BaseDataset):
         name = item["name"]
 
         ### NOTE: Data shape must have the following format: HxWxC
-        # image = rasterio.open(os.path.join(self.root, item["img"])).read()
-        # image = image.transpose((1, 2, 0)) 
-        image = np.load(os.path.join(self.root, item["img"]))
+        image = rasterio.open(os.path.join(self.root, item["img"])).read()
+        image = image.transpose((1, 2, 0)) 
+        # image = np.load(os.path.join(self.root, item["img"]))
 
         ## Normalize raster to match "uint8" data type
-        image = ((np.clip(image, 0, 65535)/65535)*255).astype(np.uint8) #Vaor saturado máximo
+        image = ((np.clip(image, 0, 65535)/65535)*255).astype(np.uint8) # Valor saturado máximo
         # image = np.stack([(im_/im_.max())/255 for im_ in image.transpose((-1, 0, 1))]).astype(np.uint8)
         size = image.shape
 

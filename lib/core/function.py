@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+
 from utils.utils import AverageMeter
 from utils.utils import get_confusion_matrix
 from utils.utils import adjust_learning_rate
@@ -38,7 +39,7 @@ def reduce_tensor(inp):
 
 
 def train(config, epoch, num_epoch, epoch_iters, base_lr,
-          num_iters, trainloader, optimizer, model, writer_dict):
+          num_iters, trainloader, optimizer, schedulers, model, writer_dict):
     # Training
     model.train()
 
@@ -73,6 +74,7 @@ def train(config, epoch, num_epoch, epoch_iters, base_lr,
         # update average loss
         ave_loss.update(reduced_loss.item())
 
+        ### TODO: Update lr scheduler to accomodate Reduce On Plateu
         lr = adjust_learning_rate(optimizer,
                                   base_lr,
                                   num_iters,
@@ -84,6 +86,9 @@ def train(config, epoch, num_epoch, epoch_iters, base_lr,
                       epoch, num_epoch, i_iter, epoch_iters,
                       batch_time.average(), [x['lr'] for x in optimizer.param_groups], ave_loss.average())
             logging.info(msg)
+
+    # for scheduler in schedulers:
+    #   scheduler.step()
 
     writer.add_scalar('train_loss', ave_loss.average(), global_steps)
     writer_dict['train_global_steps'] = global_steps + 1
