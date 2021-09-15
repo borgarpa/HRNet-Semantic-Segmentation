@@ -447,9 +447,9 @@ class HighResolutionNet(nn.Module):
         self.conv1 = nn.Conv2d(12, 256, kernel_size=3, stride=2, padding=1,
                                bias=False)
         self.bn1 = BatchNorm2d(256, momentum=BN_MOMENTUM)
-        self.conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=1,
+        self.conv2 = nn.Conv2d(256, 128, kernel_size=3, stride=2, padding=1,
                                bias=False)
-        self.bn2 = BatchNorm2d(256, momentum=BN_MOMENTUM)
+        self.bn2 = BatchNorm2d(128, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=relu_inplace)
         ## ======================================
 
@@ -457,7 +457,7 @@ class HighResolutionNet(nn.Module):
         num_channels = self.stage1_cfg['NUM_CHANNELS'][0]
         block = blocks_dict[self.stage1_cfg['BLOCK']]
         num_blocks = self.stage1_cfg['NUM_BLOCKS'][0]
-        self.layer1 = self._make_layer(block, 256, num_channels, num_blocks) # inplanes=64
+        self.layer1 = self._make_layer(block, 128, num_channels, num_blocks) # inplanes=64
         stage1_out_channel = block.expansion*num_channels
 
         self.stage2_cfg = extra['STAGE2']
@@ -606,7 +606,7 @@ class HighResolutionNet(nn.Module):
         # x = self.convstem(x)
         # x = self.bnstem(x)
         # x = self.relu(x)
-        
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
