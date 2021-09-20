@@ -95,6 +95,7 @@ def train(config, epoch, num_epoch, epoch_iters, base_lr,
 
 def validate(config, testloader, model, writer_dict):
     model.eval()
+    
     ave_loss = AverageMeter()
     nums = config.MODEL.NUM_OUTPUTS
     confusion_matrix = np.zeros(

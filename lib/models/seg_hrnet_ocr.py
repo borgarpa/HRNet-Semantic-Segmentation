@@ -18,6 +18,7 @@ import torch
 import torch.nn as nn
 import torch._utils
 import torch.nn.functional as F
+from dropblock import DropBlock2D, LinearScheduler
 
 from .bn_helper import BatchNorm2d, BatchNorm2d_class, relu_inplace
 
@@ -453,6 +454,20 @@ class HighResolutionNet(nn.Module):
         self.relu = nn.ReLU(inplace=relu_inplace)
         ## ======================================
 
+        ### DropBlock
+        print(config.MODEL.DROP_BLOCK.PROB,
+            int(config.MODEL.DROP_BLOCK.BLOCK_SIZE),
+            config.MODEL.DROP_BLOCK.START_PROB,
+            config.MODEL.DROP_BLOCK.STEPS)
+        self.dropblock = LinearScheduler(
+            DropBlock2D(drop_prob=config.MODEL.DROP_BLOCK.PROB,
+            block_size=int(config.MODEL.DROP_BLOCK.BLOCK_SIZE)),
+            start_value=config.MODEL.DROP_BLOCK.START_PROB,
+            stop_value=config.MODEL.DROP_BLOCK.PROB,
+            nr_steps=int(config.MODEL.DROP_BLOCK.STEPS)
+        )
+
+
         self.stage1_cfg = extra['STAGE1']
         num_channels = self.stage1_cfg['NUM_CHANNELS'][0]
         block = blocks_dict[self.stage1_cfg['BLOCK']]
@@ -606,6 +621,8 @@ class HighResolutionNet(nn.Module):
         # x = self.convstem(x)
         # x = self.bnstem(x)
         # x = self.relu(x)
+        if self.train:
+            self.dropblock.step()
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -614,6 +631,8 @@ class HighResolutionNet(nn.Module):
         x = self.bn2(x)
         x = self.relu(x)
         x = self.layer1(x)
+
+        x = self.dropblock(x)
 
         x_list = []
         for i in range(self.stage2_cfg['NUM_BRANCHES']):
@@ -638,9 +657,9 @@ class HighResolutionNet(nn.Module):
         for i in range(self.stage4_cfg['NUM_BRANCHES']):
             if self.transition3[i] is not None:
                 if i < self.stage3_cfg['NUM_BRANCHES']:
-                    x_list.append(self.transition3[i](y_list[i]))
+                    x_list.append(self.dropblock(self.transition3[i](y_list[i])))
                 else:
-                    x_list.append(self.transition3[i](y_list[-1]))
+                    x_list.append(self.dropblock(self.transition3[i](y_list[-1])))
             else:
                 x_list.append(y_list[i])
         x = self.stage4(x_list)

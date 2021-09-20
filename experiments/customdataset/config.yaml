@@ -1,3 +1,6 @@
+
+### TODO: [!]  update to match TOCHO version
+
 CUDNN:
   BENCHMARK: true
   DETERMINISTIC: false
@@ -11,16 +14,21 @@ PRINT_FREQ: 10
 DATASET:
   DATASET: customdataset
   ROOT: data/
-  # TEST_SET: 'list/customdataset/val_debug.lst'
-  # TRAIN_SET: 'list/customdataset/train_debug.lst'
-  TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
-  TRAIN_SET: 'list/customdataset/train.lst'
+  TEST_SET: 'list/customdataset/val_debug.lst'
+  TRAIN_SET: 'list/customdataset/train_debug.lst'
+  # TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
+  # TRAIN_SET: 'list/customdataset/train.lst'
   NUM_CLASSES: 6
 MODEL:
   NAME: seg_hrnet_ocr
   NUM_OUTPUTS: 2
   # PRETRAINED: "pretrained_models/hrnet_ocr_cs_trainval_8227_torch11.pth"
   # PRETRAINED: "output/customdataset/config/best.pth"
+  DROP_BLOCK:
+    PROB: 0.1
+    START_PROB: 0.05
+    BLOCK_SIZE: 7
+    STEPS: 200
   EXTRA:
     FINAL_CONV_KERNEL: 1
     STAGE1:
@@ -65,11 +73,11 @@ MODEL:
       - 4
       - 4
       - 4
-      NUM_CHANNELS:
-      - 48
-      - 96
-      - 192
-      - 384
+      NUM_CHANNELS: # 516 # 256 # ... # Size is halved when data enters a new stage
+      - 48 # 256 # 128 # ... 
+      - 96 # 128 # 64 # ... 
+      - 192 # 64 # 32 # ... 
+      - 384 # 32 # 16 # ... 
       FUSE_METHOD: SUM
 LOSS:
   USE_OHEM: false
@@ -78,10 +86,10 @@ LOSS:
   BALANCE_WEIGHTS: [0.4, 1]
 TRAIN:
   IMAGE_SIZE:
-  - 512
-  - 512
+  - 128
+  - 128
   BASE_SIZE: 512
-  BATCH_SIZE_PER_GPU: 2 #3
+  BATCH_SIZE_PER_GPU: 8 #3
   SHUFFLE: true
   BEGIN_EPOCH: 0
   END_EPOCH: 484
@@ -98,8 +106,8 @@ TRAIN:
   SCALE_FACTOR: 16
 TEST:
   IMAGE_SIZE:
-  - 512
-  - 512
+  - 256
+  - 256
   BASE_SIZE: 512
   BATCH_SIZE_PER_GPU: 1 #4
   FLIP_TEST: false
