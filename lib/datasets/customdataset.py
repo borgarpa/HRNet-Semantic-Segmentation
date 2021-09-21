@@ -78,19 +78,23 @@ class CustomDataset(BaseDataset):
             for item in self.img_list:
                 image_path = item
                 name = os.path.splitext(os.path.basename(image_path[0]))[0]
+                folder = os.path.normpath(image_path[0]).split(os.path.sep)[-2]
                 files.append({
                     "img": image_path[0],
                     "name": name,
+                    "folder": folder
                 })
         else:
             for item in self.img_list:
                 image_path, label_path = item
                 name = os.path.splitext(os.path.basename(label_path))[0]
+                folder = os.path.normpath(image_path[0]).split(os.path.sep)[-2]
                 files.append({
                     "img": image_path,
                     "label": label_path,
                     "name": name,
-                    "weight": 1
+                    "weight": 1,
+                    "folder": folder
                 })
         return files
         
@@ -107,6 +111,7 @@ class CustomDataset(BaseDataset):
     def __getitem__(self, index):
         item = self.files[index]
         name = item["name"]
+        folder = item["folder"]
 
         ### NOTE: Data shape must have the following format: HxWxC
         image = rasterio.open(os.path.join(self.root, item["img"])).read()
@@ -122,7 +127,7 @@ class CustomDataset(BaseDataset):
             image = self.input_transform(image)
             image = image.transpose((2, 0, 1))
 
-            return image.copy(), np.array(size), name
+            return image.copy(), np.array(size), name, folder
 
         label = cv2.imread(os.path.join(self.root, item["label"]),
                            cv2.IMREAD_GRAYSCALE)
@@ -203,11 +208,27 @@ class CustomDataset(BaseDataset):
                 lab >>= 3
         return palette
 
-    def save_pred(self, preds, sv_path, name):
+    def save_pred(self, preds, sv_path, folder, name):
         palette = self.get_palette(256)
         preds = np.asarray(np.argmax(preds.cpu(), axis=1), dtype=np.uint8)
         for i in range(preds.shape[0]):
+            if not os.path.isdir(os.path.join(sv_path, folder[i])):
+                os.makedirs(os.path.join(sv_path, folder[i]))
+
+            orig_file = list(filter(lambda x: (folder[i] in x[0]) and (name[i] in x[0]), self.img_list))[0][0]
+            orig_tif = rasterio.open(os.path.join(self.root, orig_file))
             pred = self.convert_label(preds[i], inverse=True)
+
+
+            with rasterio.open(os.path.join(sv_path, folder[i], name[i]+'.tif'), 'w',
+                dtype=rasterio.uint8,
+                driver="GTiff",
+                width=pred.shape[1],
+                height=pred.shape[0],
+                count=1,
+                transform=orig_tif.transform) as dst:
+                dst.write(np.expand_dims(pred, axis=0))
+            
             save_img = Image.fromarray(pred)
             save_img.putpalette(palette)
-            save_img.save(os.path.join(sv_path, name[i]+'.png'))
+            save_img.save(os.path.join(sv_path, folder[i], name[i]+'.png'))

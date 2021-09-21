@@ -14,16 +14,17 @@ PRINT_FREQ: 10
 DATASET:
   DATASET: customdataset
   ROOT: data/
-  TEST_SET: 'list/customdataset/val_debug.lst'
-  TRAIN_SET: 'list/customdataset/train_debug.lst'
+  # TEST_SET: 'list/customdataset/val_debug.lst'
+  TEST_SET: 'list/customdataset/test.lst'
+  # TRAIN_SET: 'list/customdataset/train_debug.lst'
   # TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
-  # TRAIN_SET: 'list/customdataset/train.lst'
+  TRAIN_SET: 'list/customdataset/train_debug.lst'
   NUM_CLASSES: 6
 MODEL:
   NAME: seg_hrnet_ocr
   NUM_OUTPUTS: 2
   # PRETRAINED: "pretrained_models/hrnet_ocr_cs_trainval_8227_torch11.pth"
-  # PRETRAINED: "output/customdataset/config/best.pth"
+  PRETRAINED: "pretrained_models/best.pth"
   DROP_BLOCK:
     PROB: 0.1
     START_PROB: 0.05
@@ -105,9 +106,10 @@ TRAIN:
   IGNORE_LABEL: 255
   SCALE_FACTOR: 16
 TEST:
+  MODEL_FILE: "pretrained_models/best.pth"
   IMAGE_SIZE:
-  - 256
-  - 256
+  - 512
+  - 512
   BASE_SIZE: 512
   BATCH_SIZE_PER_GPU: 1 #4
   FLIP_TEST: false

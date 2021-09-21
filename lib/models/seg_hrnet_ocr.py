@@ -621,7 +621,7 @@ class HighResolutionNet(nn.Module):
         # x = self.convstem(x)
         # x = self.bnstem(x)
         # x = self.relu(x)
-        if self.train:
+        if self.training:
             self.dropblock.step()
 
         x = self.conv1(x)
@@ -632,25 +632,25 @@ class HighResolutionNet(nn.Module):
         x = self.relu(x)
         x = self.layer1(x)
 
-        x = self.dropblock(x)
+        # x = self.dropblock(x)
 
         x_list = []
         for i in range(self.stage2_cfg['NUM_BRANCHES']):
             if self.transition1[i] is not None:
-                x_list.append(self.transition1[i](x))
+                x_list.append(self.dropblock(self.transition1[i](x)))
             else:
-                x_list.append(x)
+                x_list.append(self.dropblock(x))
         y_list = self.stage2(x_list)
 
         x_list = []
         for i in range(self.stage3_cfg['NUM_BRANCHES']):
             if self.transition2[i] is not None:
                 if i < self.stage2_cfg['NUM_BRANCHES']:
-                    x_list.append(self.transition2[i](y_list[i]))
+                    x_list.append(self.dropblock(self.transition2[i](y_list[i])))
                 else:
-                    x_list.append(self.transition2[i](y_list[-1]))
+                    x_list.append(self.dropblock(self.transition2[i](y_list[-1])))
             else:
-                x_list.append(y_list[i])
+                x_list.append(self.dropblock(y_list[i]))
         y_list = self.stage3(x_list)
 
         x_list = []
@@ -661,7 +661,7 @@ class HighResolutionNet(nn.Module):
                 else:
                     x_list.append(self.dropblock(self.transition3[i](y_list[-1])))
             else:
-                x_list.append(y_list[i])
+                x_list.append(self.dropblock(y_list[i]))
         x = self.stage4(x_list)
 
         # Upsampling
