@@ -6,7 +6,9 @@ CUDNN:
   DETERMINISTIC: false
   ENABLED: true
 GPUS: (0,) #(0,1,2,3)
-OUTPUT_DIR: 'output'
+# OUTPUT_DIR: 'data/fernando/masks'
+OUTPUT_DIR: 'data/validation/masks'
+# OUTPUT_DIR: 'output'
 LOG_DIR: 'log'
 WORKERS: 0 #4 ### NOTE: Set to 0 whenever using Windows, otherwise it will fail
 PRINT_FREQ: 10
@@ -14,8 +16,9 @@ PRINT_FREQ: 10
 DATASET:
   DATASET: customdataset
   ROOT: data/
-  # TEST_SET: 'list/customdataset/val_debug.lst'
-  TEST_SET: 'list/customdataset/test.lst'
+  # TEST_SET: 'list/customdataset/test_Fernando.lst'
+  TEST_SET: 'list/customdataset/test_Raquel.lst'
+  # TEST_SET: 'list/customdataset/test.lst'
   # TRAIN_SET: 'list/customdataset/train_debug.lst'
   # TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
   TRAIN_SET: 'list/customdataset/train_debug.lst'
@@ -87,8 +90,8 @@ LOSS:
   BALANCE_WEIGHTS: [0.4, 1]
 TRAIN:
   IMAGE_SIZE:
-  - 128
-  - 128
+  - 256
+  - 256
   BASE_SIZE: 512
   BATCH_SIZE_PER_GPU: 8 #3
   SHUFFLE: true
@@ -108,6 +111,8 @@ TRAIN:
 TEST:
   MODEL_FILE: "pretrained_models/best.pth"
   IMAGE_SIZE:
+  # - 256
+  # - 256
   - 512
   - 512
   BASE_SIZE: 512
