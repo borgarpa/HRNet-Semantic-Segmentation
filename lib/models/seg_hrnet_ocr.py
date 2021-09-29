@@ -708,8 +708,8 @@ class HighResolutionNet(nn.Module):
             logger.info('=> loading pretrained model {}'.format(pretrained))
             model_dict = self.state_dict()
             pretrained_dict = {k.replace('last_layer', 'aux_head').replace('model.', ''): v for k, v in pretrained_dict.items()}  
-            print(set(model_dict) - set(pretrained_dict))            
-            print(set(pretrained_dict) - set(model_dict))       
+            # print(set(model_dict) - set(pretrained_dict))            
+            # print(set(pretrained_dict) - set(model_dict))       
 
             ### SOLVE WEIGHT MISSMATCH: Set Glorot initialization for missmatching layers and load remaining weigths
 
