@@ -110,7 +110,8 @@ _C.TRAIN.NUM_SAMPLES = 0
 
 # testing
 _C.TEST = CN()
-
+_C.TEST.PREDICT_MODE = 'val'
+_C.TEST.BATCH_LISTDIR = None
 _C.TEST.IMAGE_SIZE = [512, 512]  # width * height
 _C.TEST.BASE_SIZE = 512
 

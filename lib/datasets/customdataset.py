@@ -30,6 +30,7 @@ class CustomDataset(BaseDataset):
                  crop_size=(512, 512), 
                  downsample_rate=1,
                  scale_factor=16,
+                 pred_type='val',
                  mean=[
                      0.2637107, 0.25476205, 0.21422257, 0.41460577,
                      0.3082067, 0.38923767, 0.40770265, 0.42465258,
@@ -44,6 +45,7 @@ class CustomDataset(BaseDataset):
         super(CustomDataset, self).__init__(ignore_label, base_size,
                 crop_size, downsample_rate, scale_factor, mean, std,)
 
+        self.pred_type = pred_type
         self.root = root
         self.list_path = list_path
         self.num_classes = num_classes
@@ -74,7 +76,7 @@ class CustomDataset(BaseDataset):
     
     def read_files(self):
         files = []
-        if 'test' in self.list_path:
+        if 'test' == self.pred_type:
             for item in self.img_list:
                 image_path = item
                 name = os.path.splitext(os.path.basename(image_path[0]))[0]
@@ -123,7 +125,7 @@ class CustomDataset(BaseDataset):
         # image = np.stack([(im_/im_.max())/255 for im_ in image.transpose((-1, 0, 1))]).astype(np.uint8)
         size = image.shape
 
-        if 'test' in self.list_path:
+        if 'test' == self.pred_type:
             image = self.input_transform(image)
             image = image.transpose((2, 0, 1))
 
@@ -215,7 +217,7 @@ class CustomDataset(BaseDataset):
             if not os.path.isdir(os.path.join(sv_path, folder[i])):
                 os.makedirs(os.path.join(sv_path, folder[i]))
 
-            orig_file = list(filter(lambda x: (folder[i] in x[0]) and (name[i] in x[0]), self.img_list))[0][0]
+            orig_file = list(filter(lambda x: (folder[i] in x[0]) and (name[i] == os.path.basename(x[0]).split('.')[0]), self.img_list))[0][0]
             orig_tif = rasterio.open(os.path.join(self.root, orig_file))
             pred = self.convert_label(preds[i], inverse=True)
 

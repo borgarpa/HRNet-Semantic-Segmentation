@@ -20,6 +20,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
+from tqdm.std import tqdm
 
 import _init_paths
 import models
@@ -95,48 +96,100 @@ def main():
     model = nn.DataParallel(model, device_ids=gpus).cuda()
 
     # prepare data
-    test_size = (config.TEST.IMAGE_SIZE[1], config.TEST.IMAGE_SIZE[0])
-    test_dataset = eval('datasets.'+config.DATASET.DATASET)(
-                        root=config.DATASET.ROOT,
-                        list_path=config.DATASET.TEST_SET,
-                        num_samples=None,
-                        num_classes=config.DATASET.NUM_CLASSES,
-                        multi_scale=False,
-                        flip=False,
-                        ignore_label=config.TRAIN.IGNORE_LABEL,
-                        base_size=config.TEST.BASE_SIZE,
-                        crop_size=test_size,
-                        downsample_rate=1)
+    if config.TEST.BATCH_LISTDIR:
+        print('============\nBatch process initiated...')
+        for listname in tqdm(os.listdir(config.TEST.BATCH_LISTDIR), desc='Processing scene...'):
+            listpath = os.path.normpath(os.path.join(config.TEST.BATCH_LISTDIR, listname))
+            print('Predicting scene:', listpath,'\n=============')
+            rel_listpath = './'+'/'.join(listpath.split(os.path.sep)[1:])
+        
+            test_size = (config.TEST.IMAGE_SIZE[1], config.TEST.IMAGE_SIZE[0])
+            test_dataset = eval('datasets.'+config.DATASET.DATASET)(
+                                root=config.DATASET.ROOT,
+                                list_path=rel_listpath,
+                                num_samples=None,
+                                num_classes=config.DATASET.NUM_CLASSES,
+                                multi_scale=False,
+                                flip=False,
+                                ignore_label=config.TRAIN.IGNORE_LABEL,
+                                base_size=config.TEST.BASE_SIZE,
+                                crop_size=test_size,
+                                pred_type=config.TEST.PREDICT_MODE,
+                                downsample_rate=1)
 
-    testloader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=1,
-        shuffle=False,
-        num_workers=config.WORKERS,
-        pin_memory=True)
-    
-    start = timeit.default_timer()
-    if 'val' in config.DATASET.TEST_SET:
-        mean_IoU, IoU_array, pixel_acc, mean_acc = testval(config, 
-                                                           test_dataset, 
-                                                           testloader, 
-                                                           model)
-    
-        msg = 'MeanIU: {: 4.4f}, Pixel_Acc: {: 4.4f}, \
-            Mean_Acc: {: 4.4f}, Class IoU: '.format(mean_IoU, 
-            pixel_acc, mean_acc)
-        logging.info(msg)
-        logging.info(IoU_array)
-    elif 'test' in config.DATASET.TEST_SET:
-        test(config, 
-             test_dataset, 
-             testloader, 
-             model,
-             sv_dir=final_output_dir)
+            testloader = torch.utils.data.DataLoader(
+                test_dataset,
+                batch_size=1,
+                shuffle=False,
+                num_workers=config.WORKERS,
+                pin_memory=True)
+            
+            start = timeit.default_timer()
+            if 'val' == config.TEST.PREDICT_MODE:
+                mean_IoU, IoU_array, pixel_acc, mean_acc = testval(config, 
+                                                                test_dataset, 
+                                                                testloader, 
+                                                                model)
+                msg = 'MeanIU: {: 4.4f}, Pixel_Acc: {: 4.4f}, \
+                    Mean_Acc: {: 4.4f}, Class IoU: '.format(mean_IoU, 
+                    pixel_acc, mean_acc)
+                logging.info(msg)
+                logging.info(IoU_array)
+            elif 'test' == config.TEST.PREDICT_MODE:
+                test(config, 
+                    test_dataset, 
+                    testloader, 
+                    model,
+                    sv_dir=final_output_dir)
 
-    end = timeit.default_timer()
-    logger.info('Mins: %d' % np.int((end-start)/60))
-    logger.info('Done')
+            end = timeit.default_timer()
+            logger.info('Mins: %d' % np.int((end-start)/60))
+            logger.info('Done\n============')
+
+    else:
+        test_size = (config.TEST.IMAGE_SIZE[1], config.TEST.IMAGE_SIZE[0])
+        test_dataset = eval('datasets.'+config.DATASET.DATASET)(
+                            root=config.DATASET.ROOT,
+                            list_path=config.DATASET.TEST_SET,
+                            num_samples=None,
+                            num_classes=config.DATASET.NUM_CLASSES,
+                            multi_scale=False,
+                            flip=False,
+                            ignore_label=config.TRAIN.IGNORE_LABEL,
+                            base_size=config.TEST.BASE_SIZE,
+                            crop_size=test_size,
+                            pred_type=config.TEST.PREDICT_MODE,
+                            downsample_rate=1)
+
+        testloader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=1,
+            shuffle=False,
+            num_workers=config.WORKERS,
+            pin_memory=True)
+        
+        start = timeit.default_timer()
+        if 'val' == config.TEST.PREDICT_MODE:
+            mean_IoU, IoU_array, pixel_acc, mean_acc = testval(config, 
+                                                            test_dataset, 
+                                                            testloader, 
+                                                            model)
+        
+            msg = 'MeanIU: {: 4.4f}, Pixel_Acc: {: 4.4f}, \
+                Mean_Acc: {: 4.4f}, Class IoU: '.format(mean_IoU, 
+                pixel_acc, mean_acc)
+            logging.info(msg)
+            logging.info(IoU_array)
+        elif 'test' == config.TEST.PREDICT_MODE:
+            test(config, 
+                test_dataset, 
+                testloader, 
+                model,
+                sv_dir=final_output_dir)
+
+        end = timeit.default_timer()
+        logger.info('Mins: %d' % np.int((end-start)/60))
+        logger.info('Done')
 
 
 if __name__ == '__main__':

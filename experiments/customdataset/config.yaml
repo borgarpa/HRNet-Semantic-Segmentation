@@ -7,7 +7,7 @@ CUDNN:
   ENABLED: true
 GPUS: (0,) #(0,1,2,3)
 # OUTPUT_DIR: 'data/fernando/masks'
-OUTPUT_DIR: 'data/validation/masks'
+OUTPUT_DIR: 'data/masks_validacion'
 # OUTPUT_DIR: 'output'
 LOG_DIR: 'log'
 WORKERS: 0 #4 ### NOTE: Set to 0 whenever using Windows, otherwise it will fail
