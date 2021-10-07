@@ -22,7 +22,8 @@ DATASET:
   # TRAIN_SET: 'list/customdataset/train_debug.lst'
   # TEST_SET: 'list/customdataset/val.lst' ### If test is placed in the list_path an unpacking error will prompt when validating
   TRAIN_SET: 'list/customdataset/train_debug.lst'
-  NUM_CLASSES: 6
+  NUM_CLASSES: 5
+  NUM_CLASSES_HAZE: 2
 MODEL:
   NAME: seg_hrnet_ocr
   NUM_OUTPUTS: 2

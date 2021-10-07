@@ -187,35 +187,39 @@ class BaseDataset(data.Dataset):
         return encoded_labelmap
 
     def inference(self, config, model, image, flip=False):
+        preds = []
         size = image.size()
         pred = model(image)
-
-        if config.MODEL.NUM_OUTPUTS > 1:
-            pred = pred[config.TEST.OUTPUT_INDEX]
-
-        pred = F.interpolate(
-            input=pred, size=size[-2:],
-            mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
-        )
-
-        if flip:
-            flip_img = image.numpy()[:, :, :, ::-1]
-            flip_output = model(torch.from_numpy(flip_img.copy()))
-
+        # Loop trough predictions: all classes, binary haze classes
+        for pred_ in pred:
             if config.MODEL.NUM_OUTPUTS > 1:
-                flip_output = flip_output[config.TEST.OUTPUT_INDEX]
+                pred_ = pred_[config.TEST.OUTPUT_INDEX]
 
-            flip_output = F.interpolate(
-                input=flip_output, size=size[-2:],
+            pred_ = F.interpolate(
+                input=pred_, size=size[-2:],
                 mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
             )
 
-            flip_pred = flip_output.cpu().numpy().copy()
-            flip_pred = torch.from_numpy(
-                flip_pred[:, :, :, ::-1].copy()).cuda()
-            pred += flip_pred
-            pred = pred * 0.5
-        return pred.exp()
+            if flip:
+                flip_img = image.numpy()[:, :, :, ::-1]
+                flip_output = model(torch.from_numpy(flip_img.copy()))
+
+                if config.MODEL.NUM_OUTPUTS > 1:
+                    flip_output = flip_output[config.TEST.OUTPUT_INDEX]
+
+                flip_output = F.interpolate(
+                    input=flip_output, size=size[-2:],
+                    mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
+                )
+
+                flip_pred = flip_output.cpu().numpy().copy()
+                flip_pred = torch.from_numpy(
+                    flip_pred[:, :, :, ::-1].copy()).cuda()
+                pred_ += flip_pred
+                pred_ = pred_ * 0.5
+            pred_ = pred_.exp()
+            preds.append(pred_)
+        return preds
 
     def multi_scale_inference(self, config, model, image, scales=[1], flip=False):
         batch, _, ori_height, ori_width = image.size()
@@ -224,8 +228,8 @@ class BaseDataset(data.Dataset):
         # print(image.shape)
         stride_h = np.int(self.crop_size[0] * 2.0 / 3.0)
         stride_w = np.int(self.crop_size[1] * 2.0 / 3.0)
-        final_pred = torch.zeros([1, self.num_classes,
-                                  ori_height, ori_width]).cuda()
+        final_pred = [torch.zeros([1, nclass,
+                                  ori_height, ori_width]).cuda() for nclass in [self.num_classes, self.num_classes_haze]]
         padvalue = -1.0 * np.array(self.mean) / np.array(self.std)
         for scale in scales:
             new_img = self.multi_scale_aug(image=image,
@@ -240,7 +244,7 @@ class BaseDataset(data.Dataset):
                 new_img = np.expand_dims(new_img, axis=0)
                 new_img = torch.from_numpy(new_img)
                 preds = self.inference(config, model, new_img, flip)
-                preds = preds[:, :, 0:height, 0:width]
+                preds = [pred_[:, :, 0:height, 0:width] for pred_ in preds]
             else:
                 if height < self.crop_size[0] or width < self.crop_size[1]:
                     new_img = self.pad_image(new_img, height, width,
@@ -250,9 +254,10 @@ class BaseDataset(data.Dataset):
                                              self.crop_size[0]) / stride_h)) + 1
                 cols = np.int(np.ceil(1.0 * (new_w -
                                              self.crop_size[1]) / stride_w)) + 1
-                preds = torch.zeros([1, self.num_classes,
-                                     new_h, new_w]).cuda()
-                count = torch.zeros([1, 1, new_h, new_w]).cuda()
+                preds = [torch.zeros(
+                    [1, nclass, new_h, new_w]
+                    ).cuda() for nclass in [self.num_classes, self.num_classes_haze]]
+                count = [torch.zeros([1, 1, new_h, new_w]).cuda() for _ in [self.num_classes, self.num_classes_haze]]
 
                 for r in range(rows):
                     for c in range(cols):
@@ -271,14 +276,17 @@ class BaseDataset(data.Dataset):
                         crop_img = np.expand_dims(crop_img, axis=0)
                         crop_img = torch.from_numpy(crop_img)
                         pred = self.inference(config, model, crop_img, flip)
-                        preds[:, :, h0:h1, w0:w1] += pred[:, :, 0:h1-h0, 0:w1-w0]
-                        count[:, :, h0:h1, w0:w1] += 1
-                preds = preds / count
-                preds = preds[:, :, :height, :width]
+                        for i in range(2):
+                            preds[i][:, :, h0:h1, w0:w1] += pred[i][:, :, 0:h1-h0, 0:w1-w0]
+                            count[i][:, :, h0:h1, w0:w1] += 1
+                for i in range(2):
+                    preds[i] = preds[i] / count[i]
+                    preds[i] = preds[i][:, :, :height, :width]
 
-            preds = F.interpolate(
-                preds, (ori_height, ori_width),
+            preds = [F.interpolate(
+                pred_, (ori_height, ori_width),
                 mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
-            )
-            final_pred += preds
+            ) for pred_ in preds]
+            for i in range(2):
+                final_pred[i] += preds[i]
         return final_pred

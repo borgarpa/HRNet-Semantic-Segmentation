@@ -64,6 +64,7 @@ _C.DATASET = CN()
 _C.DATASET.ROOT = ''
 _C.DATASET.DATASET = 'customdataset'
 _C.DATASET.NUM_CLASSES = 3
+_C.DATASET.NUM_CLASSES_HAZE = 2
 _C.DATASET.TRAIN_SET = 'list/customdataset/train.lst'
 _C.DATASET.EXTRA_TRAIN_SET = ''
 _C.DATASET.TEST_SET = 'list/customdataset/val.lst'
@@ -124,6 +125,7 @@ _C.TEST.FLIP_TEST = False
 _C.TEST.MULTI_SCALE = False
 _C.TEST.SCALE_LIST = [1]
 
+_C.TEST.OUTPUT_HAZE_INDEX = -1
 _C.TEST.OUTPUT_INDEX = -1
 
 # debug

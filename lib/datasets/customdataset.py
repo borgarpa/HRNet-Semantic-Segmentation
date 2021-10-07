@@ -22,7 +22,8 @@ class CustomDataset(BaseDataset):
                  root, 
                  list_path, 
                  num_samples=None, 
-                 num_classes=6,
+                 num_classes=5,
+                 num_classes_haze=2,
                  multi_scale=True, 
                  flip=True, 
                  ignore_label=-1, 
@@ -49,6 +50,7 @@ class CustomDataset(BaseDataset):
         self.root = root
         self.list_path = list_path
         self.num_classes = num_classes
+        self.num_classes_haze = num_classes_haze
 
         self.multi_scale = multi_scale
         self.flip = flip

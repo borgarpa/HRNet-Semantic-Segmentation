@@ -454,7 +454,7 @@ class HighResolutionNet(nn.Module):
         self.relu = nn.ReLU(inplace=relu_inplace)
         ## ======================================
 
-        ### DropBlock
+        ### DropBlock config
         print(config.MODEL.DROP_BLOCK.PROB,
             int(config.MODEL.DROP_BLOCK.BLOCK_SIZE),
             config.MODEL.DROP_BLOCK.START_PROB,
@@ -509,6 +509,9 @@ class HighResolutionNet(nn.Module):
         ocr_mid_channels = config.MODEL.OCR.MID_CHANNELS
         ocr_key_channels = config.MODEL.OCR.KEY_CHANNELS
 
+        ### NOTE: Duplicated OCR head to accomodate binary 'haze' class. Remaining classes (water, land, snow, shadow, cloud) are kept as usual
+
+        # OCR all classes head
         self.conv3x3_ocr = nn.Sequential(
             nn.Conv2d(last_inp_channels, ocr_mid_channels,
                       kernel_size=3, stride=1, padding=1),
@@ -532,6 +535,32 @@ class HighResolutionNet(nn.Module):
             BatchNorm2d(last_inp_channels),
             nn.ReLU(inplace=relu_inplace),
             nn.Conv2d(last_inp_channels, config.DATASET.NUM_CLASSES,
+                      kernel_size=1, stride=1, padding=0, bias=True)
+        )
+
+        # OCR haze class head
+        self.conv3x3_ocr_haze = nn.Sequential(
+            nn.Conv2d(last_inp_channels, ocr_mid_channels,
+                      kernel_size=3, stride=1, padding=1),
+            BatchNorm2d(ocr_mid_channels),
+            nn.ReLU(inplace=relu_inplace),
+        )
+        self.ocr_gather_head_haze = SpatialGather_Module(config.DATASET.NUM_CLASSES_HAZE)
+
+        self.ocr_distri_head_haze = SpatialOCR_Module(in_channels=ocr_mid_channels,
+                                                 key_channels=ocr_key_channels,
+                                                 out_channels=ocr_mid_channels,
+                                                 scale=1,
+                                                 dropout=0.05,
+                                                 )
+        self.cls_head_haze = nn.Conv2d(
+            ocr_mid_channels, config.DATASET.NUM_CLASSES_HAZE, kernel_size=1, stride=1, padding=0, bias=True)
+        self.aux_head_haze = nn.Sequential(
+            nn.Conv2d(last_inp_channels, last_inp_channels,
+                      kernel_size=1, stride=1, padding=0),
+            BatchNorm2d(last_inp_channels),
+            nn.ReLU(inplace=relu_inplace),
+            nn.Conv2d(last_inp_channels, config.DATASET.NUM_CLASSES_HAZE,
                       kernel_size=1, stride=1, padding=0, bias=True)
         )
         
@@ -676,21 +705,36 @@ class HighResolutionNet(nn.Module):
         feats = torch.cat([x[0], x1, x2, x3], 1)
 
         out_aux_seg = []
+        out_aux_seg_haze = []
 
-        # ocr
+        ### NOTE: Duplicated OCR head to accomodate binary 'haze' class. All remaining classes (water, land, snow, shadow, cloud) are kept as usual
+        ## OCR all
         out_aux = self.aux_head(feats)
         # compute contrast feature
-        feats = self.conv3x3_ocr(feats)
+        feats_all = self.conv3x3_ocr(feats)
 
-        context = self.ocr_gather_head(feats, out_aux)
-        feats = self.ocr_distri_head(feats, context)
+        context = self.ocr_gather_head(feats_all, out_aux)
+        feats_all = self.ocr_distri_head(feats_all, context)
 
-        out = self.cls_head(feats)
+        out = self.cls_head(feats_all)
 
         out_aux_seg.append(out_aux)
         out_aux_seg.append(out)
 
-        return out_aux_seg
+        ## OCR haze
+        out_aux_haze = self.aux_head_haze(feats)
+        # compute contrast feature
+        feats_haze = self.conv3x3_ocr_haze(feats)
+
+        context = self.ocr_gather_head_haze(feats_haze, out_aux_haze)
+        feats_haze = self.ocr_distri_head_haze(feats_haze, context)
+
+        out_haze = self.cls_head_haze(feats_haze)
+
+        out_aux_seg_haze.append(out_aux_haze)
+        out_aux_seg_haze.append(out_haze)
+
+        return out_aux_seg, out_aux_seg_haze
 
     def init_weights(self, pretrained='',):
         logger.info('=> init weights from normal distribution')
