@@ -40,6 +40,7 @@ def reduce_tensor(inp):
 
 def train(config, epoch, num_epoch, epoch_iters, base_lr,
           num_iters, trainloader, optimizer, schedulers, model, writer_dict):
+    # Model is instantiated by utils.FullModel to include loss calculation
     # Training
     model.train()
 
@@ -51,12 +52,13 @@ def train(config, epoch, num_epoch, epoch_iters, base_lr,
     global_steps = writer_dict['train_global_steps']
 
     for i_iter, batch in enumerate(trainloader, 0):
-        images, labels, _, _ = batch
+        images, labels, labels_haze, _, _ = batch
         images = images.cuda()
         labels = labels.long().cuda()
+        labels_haze = labels_haze.long().cuda()
 
-        losses, _ = model(images, labels)
-        loss = losses.mean()
+        (losses_all, _), (losses_haze, _) = model(images, [labels, labels_haze])
+        loss = losses_all.mean() + losses_haze.mean()
 
         if dist.is_distributed():
             reduced_loss = reduce_tensor(loss)
@@ -100,17 +102,21 @@ def validate(config, testloader, model, writer_dict):
     nums = config.MODEL.NUM_OUTPUTS
     confusion_matrix = np.zeros(
         (config.DATASET.NUM_CLASSES, config.DATASET.NUM_CLASSES, nums))
+    confusion_matrix_haze = np.zeros(
+        (config.DATASET.NUM_CLASSES_HAZE, config.DATASET.NUM_CLASSES_HAZE, nums))
     with torch.no_grad():
         for idx, batch in enumerate(testloader):
-            image, label, _, _ = batch
+            image, label, labels_haze, _, _ = batch
             size = label.size()
             image = image.cuda()
             label = label.long().cuda()
+            labels_haze = labels_haze.long().cuda()
 
-            losses, pred = model(image, label)
-            if not isinstance(pred, (list, tuple)):
-                pred = [pred]
-            for i, x in enumerate(pred):
+            (losses_all, pred_all), (losses_haze, pred_haze) = model(image, [label, labels_haze])
+            if not isinstance(pred_all, (list, tuple)):
+                pred_all = [pred_all]
+
+            for i, x in enumerate(pred_all):
                 x = F.interpolate(
                     input=x, size=size[-2:],
                     mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
@@ -124,10 +130,26 @@ def validate(config, testloader, model, writer_dict):
                     config.TRAIN.IGNORE_LABEL
                 )
 
+            if not isinstance(pred_haze, (list, tuple)):
+                pred_haze = [pred_haze]
+            for i, x in enumerate(pred_haze):
+                x = F.interpolate(
+                    input=x, size=size[-2:],
+                    mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
+                )
+
+                confusion_matrix_haze[..., i] += get_confusion_matrix(
+                    label,
+                    x,
+                    size,
+                    config.DATASET.NUM_CLASSES_HAZE,
+                    config.TRAIN.IGNORE_LABEL
+                )
+
             if idx % 10 == 0:
                 print(idx)
 
-            loss = losses.mean()
+            loss = losses_all.mean() + losses_haze.mean()
             if dist.is_distributed():
                 reduced_loss = reduce_tensor(loss)
             else:
@@ -139,21 +161,30 @@ def validate(config, testloader, model, writer_dict):
         reduced_confusion_matrix = reduce_tensor(confusion_matrix)
         confusion_matrix = reduced_confusion_matrix.cpu().numpy()
 
+        confusion_matrix_haze = torch.from_numpy(confusion_matrix_haze).cuda()
+        reduced_confusion_matrix_haze = reduce_tensor(confusion_matrix_haze)
+        confusion_matrix_haze = reduced_confusion_matrix_haze.cpu().numpy()
+
     for i in range(nums):
         pos = confusion_matrix[..., i].sum(1)
         res = confusion_matrix[..., i].sum(0)
         tp = np.diag(confusion_matrix[..., i])
         IoU_array = (tp / np.maximum(1.0, pos + res - tp))
-        mean_IoU = IoU_array.mean()
+
+        pos_haze = confusion_matrix_haze[..., i].sum(1)
+        res_haze = confusion_matrix_haze[..., i].sum(0)
+        tp_haze = np.diag(confusion_matrix_haze[..., i])
+        IoU_array_haze = (tp / np.maximum(1.0, pos_haze + res_haze - tp_haze))
+        mean_IoU = (IoU_array.mean() + IoU_array_haze.mean())/2
         if dist.get_rank() <= 0:
-            logging.info('{} {} {}'.format(i, IoU_array, mean_IoU))
+            logging.info('{} {} {} {} {} {}'.format(i, IoU_array, IoU_array_haze, IoU_array.mean(), IoU_array_haze.mean(), mean_IoU))
 
     writer = writer_dict['writer']
     global_steps = writer_dict['valid_global_steps']
     writer.add_scalar('valid_loss', ave_loss.average(), global_steps)
     writer.add_scalar('valid_mIoU', mean_IoU, global_steps)
     writer_dict['valid_global_steps'] = global_steps + 1
-    return ave_loss.average(), mean_IoU, IoU_array
+    return ave_loss.average(), mean_IoU, IoU_array, IoU_array_haze
 
 
 def testval(config, test_dataset, testloader, model,
@@ -163,7 +194,7 @@ def testval(config, test_dataset, testloader, model,
         (config.DATASET.NUM_CLASSES, config.DATASET.NUM_CLASSES))
     with torch.no_grad():
         for index, batch in enumerate(tqdm(testloader)):
-            image, label, _, name, *border_padding = batch
+            image, label, labels_haze, _, name, *border_padding = batch
             size = label.size()
             pred = test_dataset.multi_scale_inference(
                 config,

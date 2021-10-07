@@ -62,11 +62,13 @@ class BaseDataset(data.Dataset):
 
         return pad_image
 
-    def rand_crop(self, image, label):
+    def rand_crop(self, image, label, label_haze):
         h, w = image.shape[:-1]
         image = self.pad_image(image, h, w, self.crop_size,
                                (0.0, 0.0, 0.0))
         label = self.pad_image(label, h, w, self.crop_size,
+                               (self.ignore_label,))
+        label_haze = self.pad_image(label_haze, h, w, self.crop_size,
                                (self.ignore_label,))
 
         new_h, new_w = label.shape
@@ -74,10 +76,11 @@ class BaseDataset(data.Dataset):
         y = random.randint(0, new_h - self.crop_size[0])
         image = image[y:y+self.crop_size[0], x:x+self.crop_size[1]]
         label = label[y:y+self.crop_size[0], x:x+self.crop_size[1]]
+        label_haze = label_haze[y:y+self.crop_size[0], x:x+self.crop_size[1]]
 
-        return image, label
+        return image, label, label_haze
 
-    def multi_scale_aug(self, image, label=None,
+    def multi_scale_aug(self, image, label=None, label_haze=None,
                         rand_scale=1, rand_crop=True):
         long_size = np.int(self.base_size * rand_scale + 0.5)
         h, w = image.shape[:2]
@@ -90,18 +93,20 @@ class BaseDataset(data.Dataset):
 
         image = cv2.resize(image, (new_w, new_h),
                            interpolation=cv2.INTER_LINEAR)
-        if label is not None:
+        if label is not None and label_haze is not None:
             label = cv2.resize(label, (new_w, new_h),
+                               interpolation=cv2.INTER_NEAREST)
+            label_haze = cv2.resize(label_haze, (new_w, new_h),
                                interpolation=cv2.INTER_NEAREST)
         else:
             return image
 
         if rand_crop:
-            image, label = self.rand_crop(image, label)
+            image, label, label_haze = self.rand_crop(image, label, label_haze)
 
-        return image, label
+        return image, label, label_haze
 
-    def resize_short_length(self, image, label=None, short_length=None, fit_stride=None, return_padding=False):
+    def resize_short_length(self, image, label=None, label_haze=None, short_length=None, fit_stride=None, return_padding=False):
         h, w = image.shape[:2]
         if h < w:
             new_h = short_length
@@ -120,19 +125,26 @@ class BaseDataset(data.Dataset):
                 cv2.BORDER_CONSTANT, value=tuple(x * 255 for x in self.mean[::-1])
             )
 
-        if label is not None:
+        if label is not None and label_haze is not None:
             label = cv2.resize(
                 label, (new_w, new_h),
+                interpolation=cv2.INTER_NEAREST)
+            label_haze = cv2.resize(
+                label_haze, (new_w, new_h),
                 interpolation=cv2.INTER_NEAREST)
             if pad_h > 0 or pad_w > 0:
                 label = cv2.copyMakeBorder(
                     label, 0, pad_h, 0, pad_w, 
                     cv2.BORDER_CONSTANT, value=self.ignore_label
                 )
+                label_haze = cv2.copyMakeBorder(
+                    label_haze, 0, pad_h, 0, pad_w, 
+                    cv2.BORDER_CONSTANT, value=self.ignore_label
+                )
             if return_padding:
-                return image, label, (pad_h, pad_w)
+                return image, label, label_haze, (pad_h, pad_w)
             else:
-                return image, label
+                return image, label, label_haze
         else:
             if return_padding:
                 return image, (pad_h, pad_w)
@@ -152,15 +164,16 @@ class BaseDataset(data.Dataset):
         img = np.clip(img, 0, 255).astype(np.uint8)
         return img
 
-    def gen_sample(self, image, label,
+    def gen_sample(self, image, label, label_haze,
                    multi_scale=True, is_flip=True):
         if multi_scale:
             rand_scale = 0.5 + random.randint(0, self.scale_factor) / 10.0
-            image, label = self.multi_scale_aug(image, label,
+            image, label, label_haze = self.multi_scale_aug(image, label, label_haze,
                                                 rand_scale=rand_scale)
         image = self.random_brightness(image)
         image = self.input_transform(image)
         label = self.label_transform(label)
+        label_haze = self.label_transform(label_haze)
 
         image = image.transpose((2, 0, 1))
 
@@ -168,6 +181,7 @@ class BaseDataset(data.Dataset):
             flip = np.random.choice(2) * 2 - 1
             image = image[:, :, ::flip]
             label = label[:, ::flip]
+            label_haze = label_haze[:, ::flip]
 
         if self.downsample_rate != 1:
             label = cv2.resize(
@@ -177,8 +191,15 @@ class BaseDataset(data.Dataset):
                 fy=self.downsample_rate,
                 interpolation=cv2.INTER_NEAREST
             )
+            label_haze = cv2.resize(
+                label_haze,
+                None,
+                fx=self.downsample_rate,
+                fy=self.downsample_rate,
+                interpolation=cv2.INTER_NEAREST
+            )
 
-        return image, label
+        return image, label, label_haze
 
     def reduce_zero_label(self, labelmap):
         labelmap = np.array(labelmap)

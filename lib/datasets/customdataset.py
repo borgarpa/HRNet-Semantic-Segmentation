@@ -72,9 +72,17 @@ class CustomDataset(BaseDataset):
             6: 4,
             7: 5
             }
+        ## TODO: Modify haze class map
+        self.label_mapping_haze = {
+            -1: ignore_label,
+            1: ignore_label,
+            2: 0,
+            3: 1,
+            }
         self.class_weights = torch.FloatTensor([
             0.9509352630470058, 0.9619139153028585, 1.0274535832992266,
             0.8796275898249121, 1.0377751198382479, 1.1422945286877488]).cuda() ### TODO: Modify class weights
+        self.class_weights_haze = torch.FloatTensor([0.9509352630470058, 0.9619139153028585]).cuda() ### TODO: Modify class weights
     
     def read_files(self):
         files = []
@@ -90,25 +98,26 @@ class CustomDataset(BaseDataset):
                 })
         else:
             for item in self.img_list:
-                image_path, label_path = item
+                image_path, label_path, label_path_haze = item
                 name = os.path.splitext(os.path.basename(label_path))[0]
-                folder = os.path.normpath(image_path[0]).split(os.path.sep)[-2]
+                folder = os.path.normpath(image_path).split(os.path.sep)[-2]
                 files.append({
                     "img": image_path,
                     "label": label_path,
+                    "label_haze": label_path_haze,
                     "name": name,
                     "weight": 1,
                     "folder": folder
                 })
         return files
         
-    def convert_label(self, label, inverse=False):
+    def convert_label(self, label, label_mapping, inverse=False):
         temp = label.copy()
         if inverse:
-            for v, k in self.label_mapping.items():
+            for v, k in label_mapping.items():
                 label[temp == k] = v
         else:
-            for k, v in self.label_mapping.items():
+            for k, v in label_mapping.items():
                 label[temp == k] = v
         return label
 
@@ -120,10 +129,9 @@ class CustomDataset(BaseDataset):
         ### NOTE: Data shape must have the following format: HxWxC
         image = rasterio.open(os.path.join(self.root, item["img"])).read()
         image = image.transpose((1, 2, 0)) 
-        # image = np.load(os.path.join(self.root, item["img"]))
 
         ## Normalize raster to match "uint8" data type
-        image = ((np.clip(image, 0, 65535)/65535)*255).astype(np.uint8) # Valor saturado máximo
+        image = ((np.clip(image, 0, 10000)/10000)*255).astype(np.uint8) # Valor saturado máximo
         # image = np.stack([(im_/im_.max())/255 for im_ in image.transpose((-1, 0, 1))]).astype(np.uint8)
         size = image.shape
 
@@ -133,22 +141,28 @@ class CustomDataset(BaseDataset):
 
             return image.copy(), np.array(size), name, folder
 
+        # All classes
         label = cv2.imread(os.path.join(self.root, item["label"]),
                            cv2.IMREAD_GRAYSCALE)
-        label = self.convert_label(label)
-        image, label = self.gen_sample(image, label, 
+        label = self.convert_label(label, self.label_mapping)
+        # Haze binary class
+        label_haze = cv2.imread(os.path.join(self.root, item["label_haze"]),
+                           cv2.IMREAD_GRAYSCALE)
+        label_haze = self.convert_label(label_haze, self.label_mapping_haze)
+
+        image, label, label_haze = self.gen_sample(image, label, label_haze, 
                                 self.multi_scale, self.flip)
 
-        return image.copy(), label.copy(), np.array(size), name
+        return image.copy(), label.copy(), label_haze.copy(), np.array(size), name
 
     def multi_scale_inference(self, config, model, image, scales=[1], flip=False):
         batch, _, ori_height, ori_width = image.size()
         assert batch == 1, "only supporting batchsize 1."
-        image = image.numpy()[0].transpose((1,2,0)).copy()
+        image = image.numpy()[0].transpose((1, 2, 0)).copy()
         stride_h = np.int(self.crop_size[0] * 1.0)
         stride_w = np.int(self.crop_size[1] * 1.0)
-        final_pred = torch.zeros([1, self.num_classes,
-                                    ori_height,ori_width]).cuda()
+        final_pred = [torch.zeros([1, nclass,
+                                  ori_height, ori_width]).cuda() for nclass in [self.num_classes, self.num_classes_haze]]
         for scale in scales:
             new_img = self.multi_scale_aug(image=image,
                                            rand_scale=scale,
@@ -160,16 +174,16 @@ class CustomDataset(BaseDataset):
                 new_img = np.expand_dims(new_img, axis=0)
                 new_img = torch.from_numpy(new_img)
                 preds = self.inference(config, model, new_img, flip)
-                preds = preds[:, :, 0:height, 0:width]
+                preds = [pred_[:, :, 0:height, 0:width] for pred_ in preds]
             else:
                 new_h, new_w = new_img.shape[:-1]
                 rows = np.int(np.ceil(1.0 * (new_h - 
                                 self.crop_size[0]) / stride_h)) + 1
                 cols = np.int(np.ceil(1.0 * (new_w - 
                                 self.crop_size[1]) / stride_w)) + 1
-                preds = torch.zeros([1, self.num_classes,
-                                           new_h,new_w]).cuda()
-                count = torch.zeros([1,1, new_h, new_w]).cuda()
+                preds = [torch.zeros([1, nclass, new_h, new_w]
+                                    ).cuda() for nclass in [self.num_classes, self.num_classes_haze]]
+                count = [torch.zeros([1, 1, new_h, new_w]).cuda() for _ in [self.num_classes, self.num_classes_haze]]
 
                 for r in range(rows):
                     for c in range(cols):
@@ -184,16 +198,19 @@ class CustomDataset(BaseDataset):
                         crop_img = np.expand_dims(crop_img, axis=0)
                         crop_img = torch.from_numpy(crop_img)
                         pred = self.inference(config, model, crop_img, flip)
-                        preds[:,:,h0:h1,w0:w1] += pred[:,:, 0:h1-h0, 0:w1-w0]
-                        count[:,:,h0:h1,w0:w1] += 1
-                preds = preds / count
-                preds = preds[:,:,:height,:width]
+                        for i in range(2):
+                            preds[i][:, :, h0:h1, w0:w1] += pred[i][:, :, 0:h1-h0, 0:w1-w0]
+                            count[i][:, :, h0:h1, w0:w1] += 1
+                for i in range(2):
+                    preds[i] = preds[i] / count[i]
+                    preds[i] = preds[i][:, :, :height, :width]
 
-            preds = F.interpolate(
-                preds, (ori_height, ori_width), 
+            preds = [F.interpolate(
+                pred_, (ori_height, ori_width),
                 mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
-            )            
-            final_pred += preds
+            ) for pred_ in preds]
+            for i in range(2):
+                final_pred[i] += preds[i]
         return final_pred
 
     def get_palette(self, n):
@@ -214,7 +231,8 @@ class CustomDataset(BaseDataset):
 
     def save_pred(self, preds, sv_path, folder, name):
         palette = self.get_palette(256)
-        preds = np.asarray(np.argmax(preds.cpu(), axis=1), dtype=np.uint8)
+        preds = [np.asarray(np.argmax(pred_.cpu(), axis=1), dtype=np.uint8) for pred_ in preds]
+        ### TODO: Accomodate new head predictions
         for i in range(preds.shape[0]):
             if not os.path.isdir(os.path.join(sv_path, folder[i])):
                 os.makedirs(os.path.join(sv_path, folder[i]))

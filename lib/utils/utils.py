@@ -42,9 +42,12 @@ class FullModel(nn.Module):
     self.loss = loss
 
   def forward(self, inputs, labels, *args, **kwargs):
+    out_list = []
     outputs = self.model(inputs, *args, **kwargs)
-    loss = self.loss(outputs, labels)
-    return torch.unsqueeze(loss,0), outputs
+    for i, loss_ in enumerate(self.loss):
+        loss_ = loss_(outputs[i], labels[i])
+        out_list.append(torch.unsqueeze(loss_,0), outputs)
+    return out_list
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
