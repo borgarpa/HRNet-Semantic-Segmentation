@@ -46,7 +46,7 @@ class FullModel(nn.Module):
     outputs = self.model(inputs, *args, **kwargs)
     for i, loss_ in enumerate(self.loss):
         loss_ = loss_(outputs[i], labels[i])
-        out_list.append(torch.unsqueeze(loss_,0), outputs)
+        out_list.append((torch.unsqueeze(loss_,0), outputs))
     return out_list
 
 class AverageMeter(object):

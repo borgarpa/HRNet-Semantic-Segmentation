@@ -250,7 +250,6 @@ class CustomDataset(BaseDataset):
                 count=1,
                 transform=orig_tif.transform) as dst:
                 dst.write(np.expand_dims(pred, axis=0))
-            
             save_img = Image.fromarray(pred)
             save_img.putpalette(palette)
             save_img.save(os.path.join(sv_path, folder[i], name[i]+'.png'))

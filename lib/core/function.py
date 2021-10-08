@@ -113,6 +113,7 @@ def validate(config, testloader, model, writer_dict):
             labels_haze = labels_haze.long().cuda()
 
             (losses_all, pred_all), (losses_haze, pred_haze) = model(image, [label, labels_haze])
+            # All classes
             if not isinstance(pred_all, (list, tuple)):
                 pred_all = [pred_all]
 
@@ -129,7 +130,7 @@ def validate(config, testloader, model, writer_dict):
                     config.DATASET.NUM_CLASSES,
                     config.TRAIN.IGNORE_LABEL
                 )
-
+            # Binary haze class
             if not isinstance(pred_haze, (list, tuple)):
                 pred_haze = [pred_haze]
             for i, x in enumerate(pred_haze):
@@ -192,11 +193,15 @@ def testval(config, test_dataset, testloader, model,
     model.eval()
     confusion_matrix = np.zeros(
         (config.DATASET.NUM_CLASSES, config.DATASET.NUM_CLASSES))
+    confusion_matrix_haze = np.zeros(
+        (config.DATASET.NUM_CLASSES_HAZE, config.DATASET.NUM_CLASSES_HAZE))
+
     with torch.no_grad():
         for index, batch in enumerate(tqdm(testloader)):
-            image, label, labels_haze, _, name, *border_padding = batch
+            image, label, label_haze, _, name, *border_padding = batch
             size = label.size()
-            pred = test_dataset.multi_scale_inference(
+            size_haze = label_haze.size()
+            pred_all, pred_haze = test_dataset.multi_scale_inference(
                 config,
                 model,
                 image,
@@ -205,26 +210,38 @@ def testval(config, test_dataset, testloader, model,
 
             if len(border_padding) > 0:
                 border_padding = border_padding[0]
-                pred = pred[:, :, 0:pred.size(2) - border_padding[0], 0:pred.size(3) - border_padding[1]]
+                pred_all = pred_all[:, :, 0:pred_all.size(2) - border_padding[0], 0:pred_all.size(3) - border_padding[1]]
+                pred_haze = pred_haze[:, :, 0:pred_haze.size(2) - border_padding[0], 0:pred_haze.size(3) - border_padding[1]]
 
-            if pred.size()[-2] != size[-2] or pred.size()[-1] != size[-1]:
-                pred = F.interpolate(
-                    pred, size[-2:],
+            if pred_all.size()[-2] != size[-2] or pred_all.size()[-1] != size[-1]:
+                pred_all = F.interpolate(
+                    pred_all, size[-2:],
+                    mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
+                )
+            if pred_haze.size()[-2] != size[-2] or pred_haze.size()[-1] != size[-1]:
+                pred_haze = F.interpolate(
+                    pred_haze, size[-2:],
                     mode='bilinear', align_corners=config.MODEL.ALIGN_CORNERS
                 )
 
             confusion_matrix += get_confusion_matrix(
                 label,
-                pred,
+                pred_all,
                 size,
                 config.DATASET.NUM_CLASSES,
+                config.TRAIN.IGNORE_LABEL)
+            confusion_matrix_haze += get_confusion_matrix(
+                label_haze,
+                pred_haze,
+                size_haze,
+                config.DATASET.NUM_CLASSES_HAZE,
                 config.TRAIN.IGNORE_LABEL)
 
             if sv_pred:
                 sv_path = os.path.join(sv_dir, 'test_results')
                 if not os.path.exists(sv_path):
                     os.mkdir(sv_path)
-                test_dataset.save_pred(pred, sv_path, name)
+                test_dataset.save_pred([pred_all, pred_haze], sv_path, name)
 
             if index % 100 == 0:
                 logging.info('processing: %d images' % index)
