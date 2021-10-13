@@ -189,7 +189,7 @@ def gen_artificial_dataset(size, nclasses, nsamples, dataset_path, listpath):
         os.path.join(dataset_path, path_),
         os.path.join(listpath, path_+'.lst'))
 
-def get_filelist(path):
+def get_filelist(path, root):
 
     filelist = []
     folders = list(filter(lambda x: os.path.isdir(os.path.join(path, x)), os.listdir(path)))
@@ -197,7 +197,8 @@ def get_filelist(path):
         images = list(filter(lambda x: x.endswith('.tif'), os.listdir(os.path.join(path, folder))))
         masks = list(filter(lambda x: x.endswith('.png'), os.listdir(os.path.join(path, folder))))
         for image, mask in zip(images, masks):
-            filelist.append([os.path.join(path, folder, image), os.path.join(path, folder, mask)])
+            filelist.append([os.path.join('./'+root, folder, image).replace(os.path.sep, '/'),
+            os.path.join('./'+root, folder, mask).replace(os.path.sep, '/')])
 
     return filelist
 
@@ -224,7 +225,10 @@ def write_dataset(path, train, validation, test):
     for set_, name in zip([train, validation, test], ['train', 'val', 'test']):
         with open(os.path.join(path, name+'.lst'), 'w+') as f:
             for image, mask in tqdm(set_, desc=f"Writing {name} set"):
-                f.write(f'{image}\t{mask}\n')
+                if name == 'test':
+                    f.write(f'{image}\n')
+                else:
+                    f.write(f'{image}\t{mask}\n')
             f.close()
 
 def compute_train_stats(train, ignore=[0, 1], class_map=[2,3,4,5,6,7], return_stats=['mean', 'std', 'weights']):
@@ -294,17 +298,19 @@ def compute_train_stats(train, ignore=[0, 1], class_map=[2,3,4,5,6,7], return_st
 if __name__ == "__main__":
     # outpath = '.\data\customdataset'
     # gen_artificial_dataset((512, 512, 12), 3, 15, outpath, listpath)
-    listpath = '.\data\list\customdataset'
+    listpath = '.\data\list\GT_correction'
+    root = os.path.normpath('.\customdataset')
+
+    if not os.path.isdir(listpath):
+        os.makedirs(listpath)
 
     path = os.path.normpath("D:\Cloudless\data\SENTINEL_2_reference_cloud_masks_Baetens_Hagolle\Reference_dataset\dataset")
     
-    filelist = get_filelist(path)
-    train_set, validation_set, test_set = split_dataset(filelist, train=0.8, test=0.2, validation=False)
+    filelist = get_filelist(path, root)
+    train_set, validation_set, test_set = split_dataset(filelist, train=0., test=1., validation=False)
     write_dataset(listpath, train_set, validation_set, test_set)
 
-    mean, std, pixels = compute_train_stats(train_set) #return_stats=['weights']
-    print('mean:\n', mean)
-    print('std:\n', std)
-    print('pixels:\n', pixels)
-    # print(train_set[0], validation_set[0], test_set[0])
-    # print(len(filelist), filelist[:2])
+    # mean, std, pixels = compute_train_stats(train_set) #return_stats=['weights']
+    # print('mean:\n', mean)
+    # print('std:\n', std)
+    # print('pixels:\n', pixels)
