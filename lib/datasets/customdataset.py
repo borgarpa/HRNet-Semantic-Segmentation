@@ -217,7 +217,7 @@ class CustomDataset(BaseDataset):
             if not os.path.isdir(os.path.join(sv_path, folder[i])):
                 os.makedirs(os.path.join(sv_path, folder[i]))
 
-            orig_file = list(filter(lambda x: (folder[i] in x[0]) and (name[i] == os.path.basename(x[0]).split('.')[0]), self.img_list))[0][0]
+            orig_file = list(filter(lambda x: (folder[i] == x[0].split('/')[-2]) and (name[i] == os.path.basename(x[0]).split('.')[0]), self.img_list))[0][0]
             orig_tif = rasterio.open(os.path.join(self.root, orig_file))
             pred = self.convert_label(preds[i], inverse=True)
 
